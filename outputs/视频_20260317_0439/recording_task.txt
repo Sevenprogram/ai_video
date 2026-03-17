@@ -1,0 +1,133 @@
+【录屏任务】视频_20260317_0439
+📋 总时长：约 86 秒 | 分镜数：17 个
+
+⚠️  操作说明：
+1. 开始前先开启录屏软件，录制整个屏幕。
+2. 按下方分镜顺序依次操作，每个分镜在对应页面停留指定时长。
+3. 所有分镜操作完成后停止录屏，将视频保存到本地。
+4. 完成后回复：完成
+==================================================
+
+── 分镜 1/17 ──────────────────────
+⏱  停留时长：3.5 秒（视频时间轴：0.0s - 3.5s）
+🌐 打开页面：https://www.youtube.com/watch?v=dQw4w9WgXcQ
+🔍 聚焦区域：video_player（将该区域置于屏幕中央）
+📌 页面操作：固定展示，保持静止 3.5 秒
+🎤 同步台词：Alright, let's dive into this.
+
+── 分镜 2/17 ──────────────────────
+⏱  停留时长：3.0 秒（视频时间轴：3.5s - 6.5s）
+🌐 打开页面：https://coinglass.com/liquidation_heatmap
+🔍 聚焦区域：liquidation_heatmap（将该区域置于屏幕中央）
+📌 页面操作：固定展示，保持静止 3.0 秒
+🎤 同步台词：Here's your script, designed for ElevenLabs and focusing on a 3-minute read time, incorporating the ...
+
+── 分镜 3/17 ──────────────────────
+⏱  停留时长：11.0 秒（视频时间轴：6.5s - 17.5s）
+🌐 打开页面：https://coinglass.com/liquidation_heatmap
+🔍 聚焦区域：liquidation_heatmap（将该区域置于屏幕中央）
+📌 页面操作：固定展示，保持静止 11.0 秒
+🎤 同步台词：Bitcoin just saw a massive $300 million liquidation event in the last 24 hours. [clears throat] That...
+
+── 分镜 4/17 ──────────────────────
+⏱  停留时长：7.0 秒（视频时间轴：17.5s - 24.5s）
+🌐 打开页面：https://coinglass.com/liquidation_heatmap
+🔍 聚焦区域：liquidation_heatmap（将该区域置于屏幕中央）
+📌 页面操作：固定展示，保持静止 7.0 秒
+🎤 同步台词：Looking at the liquidation heatmap on CoinGlass right now, you can see massive clusters building up ...
+
+── 分镜 5/17 ──────────────────────
+⏱  停留时长：7.0 秒（视频时间轴：24.5s - 31.5s）
+🌐 打开页面：https://coinglass.com/liquidation_heatmap
+🔍 聚焦区域：liquidation_heatmap（将该区域置于屏幕中央）
+📌 页面操作：固定展示，保持静止 7.0 秒
+🎤 同步台词：It’s a clear indicator of where the market is vulnerable. Understanding these zones is crucial for m...
+
+── 分镜 6/17 ──────────────────────
+⏱  停留时长：2.0 秒（视频时间轴：31.5s - 33.5s）
+🌐 打开页面：https://ezpro.club/chart?mode=signal_free
+🔍 聚焦区域：live_kline（将该区域置于屏幕中央）
+📌 页面操作：固定展示，保持静止 2.0 秒
+🎤 同步台词：Now, let's switch gears to Ezpro.club. Forget all the indicators for a moment. What we're looking at...
+
+── 分镜 7/17 ──────────────────────
+⏱  停留时长：3.0 秒（视频时间轴：33.5s - 36.5s）
+🌐 打开页面：https://ezpro.club/chart?mode=signal_free
+🔍 聚焦区域：live_kline（将该区域置于屏幕中央）
+📌 页面操作：固定展示，保持静止 3.0 秒
+🎤 同步台词：This is the Signal-Free mode they offer. [sighs] It’s designed to strip away the noise and let you f...
+
+── 分镜 8/17 ──────────────────────
+⏱  停留时长：5.0 秒（视频时间轴：36.5s - 41.5s）
+🌐 打开页面：https://ezpro.club/chart?mode=signal_free
+🔍 聚焦区域：live_kline（将该区域置于屏幕中央）
+📌 页面操作：固定展示，保持静止 5.0 秒
+🎤 同步台词：See this support level forming around $67,500? And this resistance just above $69,000? The Signal-Fr...
+
+── 分镜 9/17 ──────────────────────
+⏱  停留时长：3.0 秒（视频时间轴：41.5s - 44.5s）
+🌐 打开页面：https://ezpro.club/chart?mode=signal_free
+🔍 聚焦区域：live_kline（将该区域置于屏幕中央）
+📌 页面操作：固定展示，保持静止 3.0 秒
+🎤 同步台词：It’s about spotting the raw supply and demand.
+
+── 分镜 10/17 ──────────────────────
+⏱  停留时长：8.0 秒（视频时间轴：44.5s - 52.5s）
+🌐 打开页面：https://www.youtube.com/watch?v=example_video_id
+🔍 聚焦区域：video_player（将该区域置于屏幕中央）
+📌 页面操作：固定展示，保持静止 8.0 秒
+🎤 同步台词：I also watched a popular YouTube video this morning where a trader was demonstrating a complex strat...
+
+── 分镜 11/17 ──────────────────────
+⏱  停留时长：6.0 秒（视频时间轴：52.5s - 58.5s）
+🌐 打开页面：https://ezpro.club/chart?mode=signal_free
+🔍 聚焦区域：live_kline（将该区域置于屏幕中央）
+📌 页面操作：固定展示，保持静止 6.0 秒
+🎤 同步台词：Relying solely on lagging indicators without considering the immediate market structure, like these ...
+
+── 分镜 12/17 ──────────────────────
+⏱  停留时长：2.0 秒（视频时间轴：58.5s - 60.5s）
+🌐 打开页面：https://ezpro.club/chart?mode=signal_free
+🔍 聚焦区域：live_kline（将该区域置于屏幕中央）
+📌 页面操作：固定展示，保持静止 2.0 秒
+🎤 同步台词：So, how do we leverage this clarity? [pause]
+
+── 分镜 13/17 ──────────────────────
+⏱  停留时长：3.0 秒（视频时间轴：60.5s - 63.5s）
+🌐 打开页面：https://ezpro.club/chart?mode=signal_free
+🔍 聚焦区域：live_kline（将该区域置于屏幕中央）
+📌 页面操作：固定展示，保持静止 3.0 秒
+🎤 同步台词：On Ezpro, with this Signal-Free environment, you can quickly assess these price levels. [pause]
+
+── 分镜 14/17 ──────────────────────
+⏱  停留时长：6.0 秒（视频时间轴：63.5s - 69.5s）
+🌐 打开页面：https://ezpro.club/chart?mode=signal_free
+🔍 聚焦区域：live_kline（将该区域置于屏幕中央）
+🖱  页面操作：点击页面刷新按钮
+🎤 同步台词：Notice how I can just refresh the page here and the key zones remain clear. [pause]
+
+── 分镜 15/17 ──────────────────────
+⏱  停留时长：5.0 秒（视频时间轴：69.5s - 74.5s）
+🌐 打开页面：https://ezpro.club/chart?mode=signal_free
+🔍 聚焦区域：live_kline（将该区域置于屏幕中央）
+📌 页面操作：固定展示，保持静止 5.0 秒
+🎤 同步台词：This direct visualization helps you make quicker, more informed decisions, avoiding those massive li...
+
+── 分镜 16/17 ──────────────────────
+⏱  停留时长：5.0 秒（视频时间轴：74.5s - 79.5s）
+🌐 打开页面：https://ezpro.club/
+🔍 聚焦区域：homepage（将该区域置于屏幕中央）
+📌 页面操作：固定展示，保持静止 5.0 秒
+🎤 同步台词：If you're tired of the market noise and want a cleaner way to trade, I highly recommend checking out...
+
+── 分镜 17/17 ──────────────────────
+⏱  停留时长：7.0 秒（视频时间轴：79.5s - 86.5s）
+🌐 打开页面：https://t.me/EzproClub
+🔍 聚焦区域：channel_info（将该区域置于屏幕中央）
+📌 页面操作：固定展示，保持静止 7.0 秒
+🎤 同步台词：We've got a dedicated Telegram group where we discuss these strategies and share real-time insights....
+
+==================================================
+✅ 以上共 17 个分镜，合计约 86 秒。
+✅ 请全程保持录屏，操作完所有分镜后停止录制，保存为一个完整视频文件。
+✅ 完成后请回复：完成

@@ -1,0 +1,81 @@
+【录屏任务】视频_20260317_0638
+📋 总时长：约 202 秒 | 分镜数：8 个
+
+⚠️  操作说明：
+1. 开始前先开启录屏软件，录制整个屏幕。
+2. 按下方分镜顺序依次操作，每个分镜在对应页面停留指定时长。
+3. 所有分镜操作完成后停止录屏，将视频保存到指定目录。
+4. 保存路径（必须）：/root/project/ai_video/video_module/video_shoot
+   - 文件名建议：crypto-demo-fullscreen.mp4，或任意 .mp4 文件名。
+5. 完成后回复：完成
+==================================================
+
+── 分镜 1/8 ──────────────────────
+⏱  停留时长：12.5 秒（视频时间轴：0.0s - 12.5s）
+🌐 打开页面：https://ezpro.club/
+🔍 聚焦区域：landing_page（将该区域置于屏幕中央）
+📌 页面操作：固定展示，保持静止 12.5 秒
+🎤 同步台词：Hey everyone, and welcome back to the channel. Have you ever felt like you're trading in a fog, with...
+📝 备注：Dynamic intro with Ezpro.club logo and blurred market chart background.
+
+── 分镜 2/8 ──────────────────────
+⏱  停留时长：20.0 秒（视频时间轴：12.5s - 32.5s）
+🌐 打开页面：https://www.coindesk.com/
+🔍 聚焦区域：latest_headlines（将该区域置于屏幕中央）
+📜 页面操作：缓慢向下滚动页面
+🎤 同步台词：Just looking at the headlines from the last 24 hours, it's clear the crypto market is as unpredictab...
+📝 备注：Transition to a CoinDesk or CoinTelegraph headline about recent market volatility or a significant regulatory development.
+
+── 分镜 3/8 ──────────────────────
+⏱  停留时长：30.0 秒（视频时间轴：32.5s - 62.5s）
+🌐 打开页面：https://ezpro.club/
+🔍 聚焦区域：landing_page_features（将该区域置于屏幕中央）
+🖱  页面操作：hover_on_element
+🎤 同步台词：That's precisely why I'm excited to talk about Ezpro.club today. They're shaking things up with a un...
+📝 备注：Transition to the Ezpro.club website, highlighting the "15-Win Challenge" banner. Mouse cursor hovers over it.
+
+── 分镜 4/8 ──────────────────────
+⏱  停留时长：30.0 秒（视频时间轴：62.5s - 92.5s）
+🌐 打开页面：https://ezpro.club/
+🔍 聚焦区域：signal_free_environment（将该区域置于屏幕中央）
+📌 页面操作：固定展示，保持静止 30.0 秒
+🎤 同步台词：But here's where it gets really interesting: their "Signal-Free Trading Environment." So many platfo...
+📝 备注：Focus on the "Signal-Free Trading Environment" feature on Ezpro.club. Show a clean chart with no indicators.
+
+── 分镜 5/8 ──────────────────────
+⏱  停留时长：30.0 秒（视频时间轴：92.5s - 122.5s）
+🌐 打开页面：https://ezpro.club/
+🔍 聚焦区域：live_kline_analysis（将该区域置于屏幕中央）
+🖱  页面操作：pointer_movement_highlight
+🎤 同步台词：Let's take a look at this chart right here. On a naked K-line, you can clearly see the established s...
+📝 备注：Show a simulated trade on Ezpro.club, demonstrating how to identify support and resistance on a naked chart. Mouse cursor points to key levels.
+
+── 分镜 6/8 ──────────────────────
+⏱  停留时长：30.0 秒（视频时间轴：122.5s - 152.5s）
+🌐 打开页面：https://www.coinglass.com/liquidation
+🔍 聚焦区域：liquidation_heatmap（将该区域置于屏幕中央）
+📜 页面操作：缓慢向下滚动页面
+🎤 同步台词：Now, let's connect this back to the broader market. If you look at something like CoinGlass data, we...
+📝 备注：Transition to a CoinGlass liquidation heatmap or funding rates chart, showing significant liquidations or high funding rates in a particular asset.
+
+── 分镜 7/8 ──────────────────────
+⏱  停留时长：30.0 秒（视频时间轴：152.5s - 182.5s）
+🌐 打开页面：https://ezpro.club/
+🔍 聚焦区域：interface_simplicity（将该区域置于屏幕中央）
+🖱  页面操作：点击页面刷新按钮
+🎤 同步台词：The beauty of Ezpro's approach is its simplicity. You refresh the page, you see the price, you ident...
+📝 备注：Show the Ezpro.club interface again, emphasizing the simplicity and ease of use. Quick demonstration of refreshing the page to show live data.
+
+── 分镜 8/8 ──────────────────────
+⏱  停留时长：20.0 秒（视频时间轴：182.5s - 202.5s）
+🌐 打开页面：https://www.youtube.com/
+🔍 聚焦区域：telegram_group_promo（将该区域置于屏幕中央）
+📌 页面操作：固定展示，保持静止 20.0 秒
+🎤 同步台词：If you're tired of the trading circus and ready for a more focused, pure approach to the markets, I ...
+📝 备注：Final call to action screen with a QR code or link to the Ezpro.club Telegram group.
+
+==================================================
+✅ 以上共 8 个分镜，合计约 202 秒。
+✅ 请全程保持录屏，操作完所有分镜后停止录制。
+✅ 视频必须保存到：/root/project/ai_video/video_module/video_shoot
+✅ 完成后请回复：完成

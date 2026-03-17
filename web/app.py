@@ -1,281 +1,260 @@
 """
-AI 视频工作流仪表盘 - FastAPI 后端
-
-启动方式（在项目根目录）：
-    uvicorn web.app:app --host 0.0.0.0 --port 8000 --reload
+Web 服务：视频工作流、录屏任务的 API 与 SSE 日志流。
 """
-
-import json
-import queue
+import os
 import sys
-import threading
+import json
 import uuid
+import queue
+import threading
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
 
-# 确保项目根目录在 sys.path 中
-ROOT = Path(__file__).resolve().parent.parent
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi import FastAPI, Request, HTTPException, Query
+from fastapi.responses import HTMLResponse, FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from typing import Optional
 
-from main import DEFAULT_PROMPT, run_workflow
-from config import VIDEO_DURATION_MINUTES
+# 导入主流程
+from main import build_storyboard_prompt, build_recording_instruction
+from module import gemini_complete
+from openclaw import send_as_user_and_wait_reply
+from config import OPENCLAW_REPLY_TIMEOUT
 
-# --------------------------------------------------------------------------- #
-# 应用初始化
-# --------------------------------------------------------------------------- #
+app = FastAPI(title="AI Video")
+ROOT = Path(__file__).resolve().parent.parent
+OUTPUTS = ROOT / "outputs"
+OUTPUTS.mkdir(exist_ok=True)
 
-app = FastAPI(title="AI视频工作流仪表盘", version="1.0")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-STATIC_DIR = Path(__file__).parent / "static"
-OUTPUTS_DIR = ROOT / "outputs"
-
-# --------------------------------------------------------------------------- #
-# 任务存储（内存）
-# --------------------------------------------------------------------------- #
-
-# job_id -> {status, created_at, prompt, logs, artifacts, error}
-JOBS: Dict[str, Dict[str, Any]] = {}
-# job_id -> queue.Queue  （用于 SSE 推送）
-JOB_QUEUES: Dict[str, queue.Queue] = {}
+# 静态文件
+STATIC = Path(__file__).parent / "static"
+if STATIC.exists():
+    app.mount("/static", StaticFiles(directory=str(STATIC)), name="static")
 
 
-def _make_job(job_id: str, prompt: str) -> dict:
-    return {
-        "id":         job_id,
-        "status":     "pending",   # pending / running / done / error
-        "created_at": datetime.now().isoformat(),
-        "prompt":     prompt,
-        "logs":       [],          # [{step, msg, ts, extra}]
-        "artifacts":  {},
-        "error":      None,
-        "current_step": None,
-        "steps": {                 # step -> "pending" / "running" / "done" / "error"
-            "script":     "pending",
-            "audio":      "pending",
-            "storyboard": "pending",
-            "openclaw":   "pending",
-            "pipeline":   "pending",
-        },
-    }
+# ─── 任务状态 ─────────────────────────────────────────────────────────
+jobs: dict = {}
+jobs_lock = threading.Lock()
 
 
-# --------------------------------------------------------------------------- #
-# Pydantic 模型
-# --------------------------------------------------------------------------- #
+def _log(job_id: str, msg: str) -> None:
+    with jobs_lock:
+        if job_id not in jobs:
+            jobs[job_id] = {"logs": [], "status": "pending", "created_at": datetime.now().isoformat()}
+        jobs[job_id]["logs"].append({"ts": datetime.now().isoformat(), "text": msg})
+        q = jobs[job_id].get("log_queue")
+        if q:
+            try:
+                q.put_nowait(msg)
+            except queue.Full:
+                pass
 
+
+# ─── API：主流程 ─────────────────────────────────────────────────────
 class CreateJobRequest(BaseModel):
-    prompt: Optional[str] = None
-    wait_for_openclaw: bool = True   # False = 发送后不等回复，直接用现有录屏继续合成
-    duration_minutes: int = VIDEO_DURATION_MINUTES  # 目标视频时长（分钟）
+    script: str
 
 
-# --------------------------------------------------------------------------- #
-# 工作流后台线程
-# --------------------------------------------------------------------------- #
+@app.post("/api/jobs")
+def create_job(req: CreateJobRequest):
+    job_id = str(uuid.uuid4())[:8]
+    with jobs_lock:
+        jobs[job_id] = {
+            "logs": [],
+            "status": "pending",
+            "log_queue": queue.Queue(),
+            "created_at": datetime.now().isoformat(),
+            "skip_openclaw": False,
+            "openclaw_manual_filename": None,
+        }
 
-def _workflow_thread(job_id: str, prompt: str, wait_for_openclaw: bool = True, duration_minutes: int = VIDEO_DURATION_MINUTES):
-    job = JOBS[job_id]
-    q   = JOB_QUEUES[job_id]
-    job["status"] = "running"
+    def run():
+        try:
+            _log(job_id, "[1/4] 生成分镜提示词...")
+            prompt = build_storyboard_prompt(req.script)
+            _log(job_id, "[2/4] 调用 LLM 生成分镜 JSON...")
+            storyboard = gemini_complete(prompt)
+            text = storyboard.strip()
+            if text.startswith("```"):
+                text = text.split("\n", 1)[-1].rsplit("```", 1)[0]
+            data = json.loads(text)
+            shots = data.get("shots", data) if isinstance(data, dict) else data
+            folder_name = f"视频_{datetime.now().strftime('%Y%m%d_%H%M')}"
+            out_dir = OUTPUTS / folder_name
+            out_dir.mkdir(parents=True, exist_ok=True)
+            (out_dir / "storyboard.txt").write_text(storyboard, encoding="utf-8")
+            (out_dir / "script.txt").write_text(req.script, encoding="utf-8")
+            _log(job_id, f"[3/4] 生成录屏指令，共 {len(shots)} 个分镜...")
+            instruction = build_recording_instruction(shots, folder_name)
+            (out_dir / "recording_task.txt").write_text(instruction, encoding="utf-8")
+            _log(job_id, "[4/4] 等待发送给 OpenClaw...")
+            with jobs_lock:
+                j = jobs.get(job_id, {})
+                if j.get("skip_openclaw"):
+                    _log(job_id, "用户选择跳过，使用最新/指定视频继续")
+                    jobs[job_id]["status"] = "done"
+                    return
+            reply = send_as_user_and_wait_reply(instruction, timeout=OPENCLAW_REPLY_TIMEOUT)
+            _log(job_id, f"OpenClaw 回复：{reply[:200] if reply else '（无）'}...")
+            jobs[job_id]["status"] = "done"
+        except Exception as e:
+            _log(job_id, f"[错误] {e}")
+            jobs[job_id]["status"] = "error"
 
-    _STEP_ORDER = ["script", "audio", "storyboard", "openclaw", "pipeline"]
-    _current_step = [None]
-
-    def log_fn(step: str, msg: str, **extra):
-        ts = datetime.now().isoformat()
-
-        # 更新步骤状态
-        if step in _STEP_ORDER:
-            # 将上一步标为 done（如果有的话）
-            prev = _current_step[0]
-            if prev and prev != step and job["steps"].get(prev) == "running":
-                job["steps"][prev] = "done"
-            job["steps"][step] = "running"
-            _current_step[0] = step
-            job["current_step"] = step
-        elif step == "done":
-            # 所有步骤完成
-            for s in _STEP_ORDER:
-                if job["steps"][s] == "running":
-                    job["steps"][s] = "done"
-            _current_step[0] = "done"
-        elif step == "error":
-            cur = _current_step[0]
-            if cur and cur in _STEP_ORDER:
-                job["steps"][cur] = "error"
-
-        # 追加日志
-        entry = {"step": step, "msg": msg, "ts": ts}
-        if extra:
-            entry["extra"] = {k: v for k, v in extra.items()
-                              if k not in ("artifacts",) and _is_json_safe(v)}
-        job["logs"].append(entry)
-
-        # 推入 SSE 队列
-        payload = json.dumps(entry, ensure_ascii=False)
-        q.put(f"data: {payload}\n\n")
-
-    try:
-        outputs_base = str(OUTPUTS_DIR)
-        artifacts = run_workflow(
-            prompt,
-            log_fn=log_fn,
-            outputs_base=outputs_base,
-            wait_for_openclaw=wait_for_openclaw,
-            duration_minutes=duration_minutes,
-        )
-        job["artifacts"] = {k: str(v) if v else None for k, v in artifacts.items()
-                            if k != "shots"}
-        job["artifacts"]["shots"] = artifacts.get("shots", [])
-        job["status"] = "done"
-    except Exception as exc:
-        job["status"] = "error"
-        job["error"]  = str(exc)
-        ts = datetime.now().isoformat()
-        entry = {"step": "error", "msg": str(exc), "ts": ts}
-        job["logs"].append(entry)
-        q.put(f"data: {json.dumps(entry, ensure_ascii=False)}\n\n")
-    finally:
-        q.put(None)  # 终止信号
-
-
-def _is_json_safe(v) -> bool:
-    try:
-        json.dumps(v)
-        return True
-    except Exception:
-        return False
-
-
-# --------------------------------------------------------------------------- #
-# API 端点
-# --------------------------------------------------------------------------- #
-
-@app.get("/api/health")
-def health():
-    return {"status": "ok"}
-
-
-@app.get("/api/default-prompt")
-def get_default_prompt():
-    return {"prompt": DEFAULT_PROMPT}
-
-
-@app.post("/api/jobs", status_code=201)
-def create_job(body: CreateJobRequest):
-    job_id   = str(uuid.uuid4())
-    prompt   = (body.prompt or "").strip() or DEFAULT_PROMPT
-    wait     = body.wait_for_openclaw
-    duration = body.duration_minutes
-
-    job = _make_job(job_id, prompt)
-    job["wait_for_openclaw"]  = wait
-    job["duration_minutes"]   = duration
-    JOBS[job_id] = job
-    JOB_QUEUES[job_id] = queue.Queue()
-
-    t = threading.Thread(
-        target=_workflow_thread, args=(job_id, prompt, wait, duration), daemon=True
-    )
-    t.start()
-
+    threading.Thread(target=run, daemon=True).start()
     return {"job_id": job_id}
 
 
-@app.get("/api/jobs")
-def list_jobs():
-    result = []
-    for job in sorted(JOBS.values(), key=lambda j: j["created_at"], reverse=True):
-        result.append({
-            "id":           job["id"],
-            "status":       job["status"],
-            "created_at":   job["created_at"],
-            "prompt":       job["prompt"][:80] + ("..." if len(job["prompt"]) > 80 else ""),
-            "current_step": job.get("current_step"),
-            "steps":        job["steps"],
-        })
-    return result
+@app.post("/api/jobs/{job_id}/skip-openclaw")
+def skip_openclaw(job_id: str, filename: Optional[str] = Query(None)):
+    with jobs_lock:
+        if job_id not in jobs:
+            raise HTTPException(404, "job not found")
+        jobs[job_id]["skip_openclaw"] = True
+        if filename:
+            jobs[job_id]["openclaw_manual_filename"] = filename
+    return {"ok": True}
 
 
-@app.get("/api/jobs/{job_id}")
-def get_job(job_id: str):
-    job = JOBS.get(job_id)
-    if not job:
-        raise HTTPException(404, "任务不存在")
-    return {
-        "id":           job["id"],
-        "status":       job["status"],
-        "created_at":   job["created_at"],
-        "prompt":       job["prompt"],
-        "steps":        job["steps"],
-        "current_step": job.get("current_step"),
-        "logs":         job["logs"],
-        "artifacts":    job["artifacts"],
-        "error":        job["error"],
-    }
+@app.get("/api/jobs/{job_id}/logs")
+def stream_logs(job_id: str):
+    with jobs_lock:
+        if job_id not in jobs:
+            raise HTTPException(404, "job not found")
+        q = jobs[job_id].get("log_queue")
+        if not q:
+            q = queue.Queue()
+            jobs[job_id]["log_queue"] = q
+            for log in jobs[job_id].get("logs", []):
+                q.put(log.get("text", ""))
 
-
-@app.get("/api/jobs/{job_id}/stream")
-def stream_job(job_id: str):
-    job = JOBS.get(job_id)
-    if not job:
-        raise HTTPException(404, "任务不存在")
-
-    q = JOB_QUEUES.get(job_id)
-
-    def event_gen():
-        # 先回放历史日志
-        for entry in job["logs"]:
-            yield f"data: {json.dumps(entry, ensure_ascii=False)}\n\n"
-
-        # 如果已结束就直接返回
-        if job["status"] in ("done", "error") and q is None:
-            return
-
-        # 持续读取新事件
-        if q:
-            while True:
-                item = q.get()
-                if item is None:
-                    break
-                yield item
+    def gen():
+        while True:
+            try:
+                msg = q.get(timeout=15)
+                yield f"data: {json.dumps({'text': msg})}\n\n"
+            except queue.Empty:
+                yield ": ping\n\n"
+            except GeneratorExit:
+                break
 
     return StreamingResponse(
-        event_gen(),
+        gen(),
         media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no",
-        },
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
     )
 
 
-@app.get("/api/files/{folder}/{filename}")
-def serve_file(folder: str, filename: str):
-    """提供 outputs/ 下的文件访问（文稿/音频/xlsx 等）。"""
-    path = OUTPUTS_DIR / folder / filename
-    if not path.exists():
-        raise HTTPException(404, "文件不存在")
-    return FileResponse(str(path))
+# ─── API：录屏先行 ───────────────────────────────────────────────────
+recording_jobs: dict = {}
 
 
-# --------------------------------------------------------------------------- #
-# 静态文件（前端）
-# --------------------------------------------------------------------------- #
+class CreateRecordingJobRequest(BaseModel):
+    prompt: Optional[str] = None
 
-app.mount("/", StaticFiles(directory=str(STATIC_DIR), html=True), name="static")
+
+def _log_recording(job_id: str, msg: str) -> None:
+    with jobs_lock:
+        if job_id in recording_jobs:
+            recording_jobs[job_id]["logs"].append({"ts": datetime.now().isoformat(), "text": msg})
+            q = recording_jobs[job_id].get("log_queue")
+            if q:
+                try:
+                    q.put_nowait(msg)
+                except queue.Full:
+                    pass
+
+
+@app.post("/api/recording/jobs")
+def create_recording_job(req: CreateRecordingJobRequest):
+    job_id = str(uuid.uuid4())[:8]
+    with jobs_lock:
+        recording_jobs[job_id] = {
+            "logs": [],
+            "status": "pending",
+            "log_queue": queue.Queue(),
+            "created_at": datetime.now().isoformat(),
+        }
+
+    def run():
+        try:
+            _log_recording(job_id, "录屏先行流程启动")
+            if not req.prompt:
+                _log_recording(job_id, "错误：缺少提示词")
+                recording_jobs[job_id]["status"] = "error"
+                return
+            _log_recording(job_id, "发送给 OpenClaw...")
+            reply = send_as_user_and_wait_reply(req.prompt, timeout=OPENCLAW_REPLY_TIMEOUT)
+            _log_recording(job_id, f"回复：{reply[:200] if reply else '（无）'}...")
+            recording_jobs[job_id]["status"] = "done"
+        except Exception as e:
+            _log_recording(job_id, f"错误：{e}")
+            recording_jobs[job_id]["status"] = "error"
+
+    threading.Thread(target=run, daemon=True).start()
+    return {"job_id": job_id}
+
+
+@app.post("/api/recording/jobs/{job_id}/skip-openclaw")
+def skip_recording_openclaw(job_id: str, filename: Optional[str] = Query(None)):
+    with jobs_lock:
+        if job_id not in recording_jobs:
+            raise HTTPException(404, "job not found")
+        recording_jobs[job_id]["skip_openclaw"] = True
+        if filename:
+            recording_jobs[job_id]["openclaw_manual_filename"] = filename
+    return {"ok": True}
+
+
+@app.get("/api/recording/jobs/{job_id}/logs")
+def stream_recording_logs(job_id: str):
+    with jobs_lock:
+        if job_id not in recording_jobs:
+            raise HTTPException(404, "job not found")
+        q = recording_jobs[job_id].get("log_queue")
+        if not q:
+            q = queue.Queue()
+            recording_jobs[job_id]["log_queue"] = q
+            for log in recording_jobs[job_id].get("logs", []):
+                q.put(log.get("text", ""))
+
+    def gen():
+        while True:
+            try:
+                msg = q.get(timeout=15)
+                yield f"data: {json.dumps({'text': msg})}\n\n"
+            except queue.Empty:
+                yield ": ping\n\n"
+            except GeneratorExit:
+                break
+
+    return StreamingResponse(
+        gen(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+    )
+
+
+# ─── 页面 ───────────────────────────────────────────────────────────
+@app.get("/", response_class=HTMLResponse)
+def index():
+    path = STATIC / "index.html"
+    if path.exists():
+        return FileResponse(path)
+    return HTMLResponse("<h1>AI Video</h1><p>请将 index.html 放入 web/static/</p>")
+
+
+@app.get("/recording", response_class=HTMLResponse)
+def recording():
+    path = STATIC / "recording.html"
+    if path.exists():
+        return FileResponse(path)
+    return HTMLResponse("<h1>录屏先行</h1><p>请将 recording.html 放入 web/static/</p>")
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

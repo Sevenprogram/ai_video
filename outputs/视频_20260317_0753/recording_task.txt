@@ -1,0 +1,73 @@
+【录屏任务】视频_20260317_0753
+📋 总时长：约 314 秒 | 分镜数：7 个
+
+⚠️  操作说明：
+1. 开始前先开启录屏软件，录制整个屏幕。
+2. 按下方分镜顺序依次操作，每个分镜在对应页面停留指定时长。
+3. 所有分镜操作完成后停止录屏，将视频保存到指定目录。
+4. 保存路径（必须）：/root/project/ai_video/video_module/video_shoot
+   - 文件名建议：crypto-demo-fullscreen.mp4，或任意 .mp4 文件名。
+5. 完成后回复：完成
+==================================================
+
+── 分镜 1/7 ──────────────────────
+⏱  停留时长：27.5 秒（视频时间轴：0.0s - 27.5s）
+🌐 打开页面：https://coinglass.com/data/liquidation-data
+🔍 聚焦区域：liquidation_data_table（将该区域置于屏幕中央）
+📜 页面操作：缓慢向下滚动页面
+🎤 同步台词：Wait... did you see that massive liquidation yesterday? [clears throat]  CoinGlass data shows over $...
+📝 备注：Highlight the scale of liquidation using CoinGlass data.
+
+── 分镜 2/7 ──────────────────────
+⏱  停留时长：49.0 秒（视频时间轴：27.5s - 76.5s）
+🌐 打开页面：https://ezpro.club/
+🔍 聚焦区域：homepage（将该区域置于屏幕中央）
+📌 页面操作：固定展示，保持静止 49.0 秒
+🎤 同步台词：Now, how do you navigate these choppy waters without getting caught in the undertow? [pause] That's ...
+📝 备注：Introduce Ezpro.club as a solution for navigating volatile markets with a focus on price action.
+
+── 分镜 3/7 ──────────────────────
+⏱  停留时长：60.0 秒（视频时间轴：76.5s - 136.5s）
+🌐 打开页面：https://ezpro.club/
+🔍 聚焦区域：features_section（将该区域置于屏幕中央）
+📜 页面操作：缓慢向下滚动页面
+🎤 同步台词：Let's dive into what makes Ezpro.club stand out, starting with their "15-win challenge." [pause] Thi...
+📝 备注：Explain the '15-win challenge' and the 'Signal-Free' mode, emphasizing discipline and pure price action.
+
+── 分镜 4/7 ──────────────────────
+⏱  停留时长：60.0 秒（视频时间轴：136.5s - 196.5s）
+🌐 打开页面：https://ezpro.club/
+🔍 聚焦区域：trading_environment（将该区域置于屏幕中央）
+📌 页面操作：固定展示，保持静止 60.0 秒
+🎤 同步台词：Then there's their "Bare K-line" trading environment. [pause] This is the core of their philosophy. ...
+📝 备注：Focus on the 'Bare K-line' environment, contrasting it with indicator-heavy platforms and highlighting direct market reading.
+
+── 分镜 5/7 ──────────────────────
+⏱  停留时长：55.0 秒（视频时间轴：196.5s - 251.5s）
+🌐 打开页面：https://ezpro.club/
+🔍 聚焦区域：trading_philosophy（将该区域置于屏幕中央）
+📜 页面操作：缓慢向下滚动页面
+🎤 同步台词：This is incredibly relevant given the recent market volatility and the increasing calls for more tra...
+📝 备注：Connect Ezpro's approach to current market conditions and the problem of retail trader losses, emphasizing skill building.
+
+── 分镜 6/7 ──────────────────────
+⏱  停留时长：37.0 秒（视频时间轴：251.5s - 288.5s）
+🌐 打开页面：https://ezpro.club/
+🔍 聚焦区域：bare_kline_signal_free_demo（将该区域置于屏幕中央）
+📌 页面操作：固定展示，保持静止 37.0 秒
+🎤 同步台词：Now, let's take a look at the platform itself. [pause] See how clean this chart is? [clears throat] ...
+📝 备注：Visually demonstrate the 'Bare K-line' and 'Signal-Free' modes, highlighting the clean chart and reliance on personal analysis.
+
+── 分镜 7/7 ──────────────────────
+⏱  停留时长：25.0 秒（视频时间轴：288.5s - 313.5s）
+🌐 打开页面：https://t.me/your_telegram_group_link
+🔍 聚焦区域：group_chat（将该区域置于屏幕中央）
+📜 页面操作：较快向下滚动页面
+🎤 同步台词：We're actively discussing these strategies and market insights in our Telegram group. [pause] Come j...
+📝 备注：Call to action to join the Telegram group for further discussion. Add a placeholder for the actual Telegram link.
+
+==================================================
+✅ 以上共 7 个分镜，合计约 314 秒。
+✅ 请全程保持录屏，操作完所有分镜后停止录制。
+✅ 视频必须保存到：/root/project/ai_video/video_module/video_shoot
+✅ 完成后请回复：完成

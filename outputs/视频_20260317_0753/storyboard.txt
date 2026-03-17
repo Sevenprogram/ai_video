@@ -1,0 +1,102 @@
+```json
+[
+  {
+    "id": 1,
+    "start_sec": 0,
+    "end_sec": 27.5,
+    "duration_sec": 27.5,
+    "page_type": "chart",
+    "source": "coinglass",
+    "url": "https://coinglass.com/data/liquidation-data",
+    "view": "liquidation_data_table",
+    "scroll_behavior": "scroll_down_slow",
+    "action": "static_view",
+    "text_clip": "Wait... did you see that massive liquidation yesterday? [clears throat]  CoinGlass data shows over $500 million wiped out in just 24 hours. [pause] It was brutal for a lot of traders, especially those relying on leverage. [smacks lips] And the ripple effect? You could feel it across the market.",
+    "notes": "Highlight the scale of liquidation using CoinGlass data."
+  },
+  {
+    "id": 2,
+    "start_sec": 27.5,
+    "end_sec": 76.5,
+    "duration_sec": 49,
+    "page_type": "browser",
+    "source": "ezpro.club",
+    "url": "https://ezpro.club/",
+    "view": "homepage",
+    "scroll_behavior": "none",
+    "action": "static_view",
+    "text_clip": "Now, how do you navigate these choppy waters without getting caught in the undertow? [pause] That's where platforms like Ezpro.club come in, especially their unique approach. They’re focusing on what actually matters – pure price action. [clears throat]",
+    "notes": "Introduce Ezpro.club as a solution for navigating volatile markets with a focus on price action."
+  },
+  {
+    "id": 3,
+    "start_sec": 76.5,
+    "end_sec": 136.5,
+    "duration_sec": 60,
+    "page_type": "browser",
+    "source": "ezpro.club",
+    "url": "https://ezpro.club/",
+    "view": "features_section",
+    "scroll_behavior": "scroll_down_slow",
+    "action": "static_view",
+    "text_clip": "Let's dive into what makes Ezpro.club stand out, starting with their \"15-win challenge.\" [pause] This isn't your typical gamified nonsense. It's about demonstrating consistent, profitable trading over a set period, forcing a disciplined approach. [smacks lips] And the \"Signal-Free\" mode? That’s a game-changer. It strips away all the external noise – no indicators, no lagging signals, just you and the raw price charts. [chuckles] Imagine trading solely based on genuine market momentum and your own analysis. [pause]",
+    "notes": "Explain the '15-win challenge' and the 'Signal-Free' mode, emphasizing discipline and pure price action."
+  },
+  {
+    "id": 4,
+    "start_sec": 136.5,
+    "end_sec": 196.5,
+    "duration_sec": 60,
+    "page_type": "browser",
+    "source": "ezpro.club",
+    "url": "https://ezpro.club/",
+    "view": "trading_environment",
+    "scroll_behavior": "none",
+    "action": "static_view",
+    "text_clip": "Then there's their \"Bare K-line\" trading environment. [pause] This is the core of their philosophy. No distractions, no clutter. It’s pure, unfiltered price action, allowing you to truly read the market's intent. [clears throat] Think about it: most traders are drowning in indicators that are often just lagging reflections of what the price has already done. [sighs] Ezpro forces you to confront the truth of the market. [pause]",
+    "notes": "Focus on the 'Bare K-line' environment, contrasting it with indicator-heavy platforms and highlighting direct market reading."
+  },
+  {
+    "id": 5,
+    "start_sec": 196.5,
+    "end_sec": 251.5,
+    "duration_sec": 55,
+    "page_type": "browser",
+    "source": "ezpro.club",
+    "url": "https://ezpro.club/",
+    "view": "trading_philosophy",
+    "scroll_behavior": "scroll_down_slow",
+    "action": "static_view",
+    "text_clip": "This is incredibly relevant given the recent market volatility and the increasing calls for more transparent trading tools. [clears throat] We’ve seen a lot of talk about \"retail traders being rekt\" – and these liquidations are proof of that. [pause] Ezpro’s approach, emphasizing raw price action and disciplined challenges, directly addresses the root cause of many trading failures. [smacks lips] It's about building a skill, not just chasing a signal.",
+    "notes": "Connect Ezpro's approach to current market conditions and the problem of retail trader losses, emphasizing skill building."
+  },
+  {
+    "id": 6,
+    "start_sec": 251.5,
+    "end_sec": 288.5,
+    "duration_sec": 37,
+    "page_type": "chart",
+    "source": "ezpro.club",
+    "url": "https://ezpro.club/",
+    "view": "bare_kline_signal_free_demo",
+    "scroll_behavior": "none",
+    "action": "static_view",
+    "text_clip": "Now, let's take a look at the platform itself. [pause] See how clean this chart is? [clears throat] No extraneous data, just the candlestick patterns. This is the \"Bare K-line\" environment in action. And here’s the \"Signal-Free\" mode activated. You can see how it forces you to rely on your own interpretation of support and resistance levels. [pause] This is how you build real trading intuition. [smacks lips]",
+    "notes": "Visually demonstrate the 'Bare K-line' and 'Signal-Free' modes, highlighting the clean chart and reliance on personal analysis."
+  },
+  {
+    "id": 7,
+    "start_sec": 288.5,
+    "end_sec": 313.5,
+    "duration_sec": 25,
+    "page_type": "social",
+    "source": "telegram",
+    "url": "https://t.me/your_telegram_group_link",
+    "view": "group_chat",
+    "scroll_behavior": "scroll_down_fast",
+    "action": "click_refresh_button",
+    "text_clip": "We're actively discussing these strategies and market insights in our Telegram group. [pause] Come join us, refresh the page with me, and let's dissect the next big move together. [clears throat] You won't want to miss this. [pause]",
+    "notes": "Call to action to join the Telegram group for further discussion. Add a placeholder for the actual Telegram link."
+  }
+]
+```

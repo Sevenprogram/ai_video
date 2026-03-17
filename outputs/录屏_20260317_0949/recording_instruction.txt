@@ -1,0 +1,13 @@
+/root/project/ai_video/video_module/video_shoot/template.mp4
+open_url("https://www.coinglass.com/chart/futuresLiquidation")
+sleep(30)
+scroll_down(times=5, interval=3)
+hover_element("div.btc_area")
+sleep(5)
+open_url("https://ezpro.club/kline")
+sleep(30)
+open_url("https://ezpro.club/strategy/marketplace")
+scroll_down(times=10, interval=2)
+sleep(30)
+open_url("https://ezpro.club/kline")
+sleep(30)

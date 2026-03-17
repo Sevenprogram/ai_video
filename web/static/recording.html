@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Video - 录屏先行</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; max-width: 800px; margin: 0 auto; padding: 24px; }
+    h1 { margin-bottom: 24px; }
+    label { display: block; margin-bottom: 8px; font-weight: 500; }
+    textarea { width: 100%; min-height: 120px; padding: 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
+    select, input[type="text"] { padding: 10px; border: 1px solid #ccc; border-radius: 6px; width: 100%; max-width: 400px; }
+    button { padding: 10px 20px; margin-right: 8px; margin-top: 8px; cursor: pointer; background: #2563eb; color: white; border: none; border-radius: 6px; }
+    button:hover { background: #1d4ed8; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    button.secondary { background: #6b7280; }
+    button.secondary:hover { background: #4b5563; }
+    #log { background: #1e293b; color: #e2e8f0; padding: 16px; border-radius: 8px; font-family: monospace; font-size: 13px; white-space: pre-wrap; max-height: 400px; overflow-y: auto; margin-top: 16px; }
+    .skip-btns { margin-top: 12px; }
+    .skip-btns.hidden { display: none; }
+    .prompt-section.hidden { display: none; }
+  </style>
+</head>
+<body>
+  <h1>AI Video - 录屏先行</h1>
+  <label>模式</label>
+  <select id="mode">
+    <option value="openclaw">OpenClaw 生成录屏指令</option>
+    <option value="local">使用本地视频</option>
+  </select>
+  <div class="prompt-section" id="promptSection">
+    <label>提示词（发给 OpenClaw）</label>
+    <textarea id="prompt" placeholder="输入录屏任务描述..."></textarea>
+  </div>
+  <button id="start">开始</button>
+  <div class="skip-btns hidden" id="skipBtns">
+    <button class="secondary" id="skipLatest">使用最新视频继续</button>
+    <button class="secondary" id="skipFile">使用指定文件继续</button>
+  </div>
+  <div id="log"></div>
+
+  <script>
+    const modeEl = document.getElementById('mode');
+    const promptSection = document.getElementById('promptSection');
+    const promptEl = document.getElementById('prompt');
+    const startBtn = document.getElementById('start');
+    const logEl = document.getElementById('log');
+    const skipBtns = document.getElementById('skipBtns');
+    const skipLatestBtn = document.getElementById('skipLatest');
+    const skipFileBtn = document.getElementById('skipFile');
+
+    let jobId = null;
+    let evtSource = null;
+
+    modeEl.onchange = () => {
+      const isLocal = modeEl.value === 'local';
+      promptSection.classList.toggle('hidden', isLocal);
+    };
+
+    function log(msg) {
+      logEl.textContent += msg + '\n';
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function showSkipBtns(show) {
+      skipBtns.classList.toggle('hidden', !show);
+    }
+
+    async function start() {
+      const isLocal = modeEl.value === 'local';
+      const prompt = promptEl.value.trim();
+      if (!isLocal && !prompt) {
+        alert('请输入提示词');
+        return;
+      }
+      if (isLocal) {
+        log('本地视频模式：暂不发起 OpenClaw 请求');
+        return;
+      }
+      startBtn.disabled = true;
+      logEl.textContent = '';
+      try {
+        const r = await fetch('/api/recording/jobs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt })
+        });
+        if (!r.ok) throw new Error(await r.text());
+        const data = await r.json();
+        jobId = data.job_id;
+        log(`任务已创建: ${jobId}`);
+        showSkipBtns(true);
+        evtSource = new EventSource(`/api/recording/jobs/${jobId}/logs`);
+        evtSource.onmessage = e => {
+          try {
+            const d = JSON.parse(e.data);
+            log(d.text || '');
+            if (/等待|OpenClaw/.test(d.text || '')) showSkipBtns(true);
+          } catch (_) {}
+        };
+        evtSource.onerror = () => { evtSource?.close(); };
+      } catch (e) {
+        log('错误: ' + e.message);
+      } finally {
+        startBtn.disabled = false;
+      }
+    }
+
+    async function skip(mode) {
+      if (!jobId) return;
+      let url = `/api/recording/jobs/${jobId}/skip-openclaw`;
+      if (mode === 'file') {
+        const fn = prompt('输入文件名：');
+        if (fn == null) return;
+        url += '?filename=' + encodeURIComponent(fn);
+      }
+      try {
+        await fetch(url, { method: 'POST' });
+        log(mode === 'file' ? '已选择指定文件继续' : '已选择使用最新视频继续');
+      } catch (e) {
+        log('跳过失败: ' + e.message);
+      }
+    }
+
+    startBtn.onclick = start;
+    skipLatestBtn.onclick = () => skip('latest');
+    skipFileBtn.onclick = () => skip('file');
+  </script>
+</body>
+</html>

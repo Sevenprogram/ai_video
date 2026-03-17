@@ -1,0 +1,91 @@
+【录屏任务】视频_20260317_0435
+📋 总时长：约 80 秒 | 分镜数：11 个
+
+⚠️  操作说明：
+1. 开始前先开启录屏软件，录制整个屏幕。
+2. 按下方分镜顺序依次操作，每个分镜在对应页面停留指定时长。
+3. 所有分镜操作完成后停止录屏，将视频保存到本地。
+4. 完成后回复：完成
+==================================================
+
+── 分镜 1/11 ──────────────────────
+⏱  停留时长：3.5 秒（视频时间轴：0.0s - 3.5s）
+🌐 打开页面：https://ezpro.club/
+🔍 聚焦区域：homepage（将该区域置于屏幕中央）
+📌 页面操作：固定展示，保持静止 3.5 秒
+🎤 同步台词：Alright, let's dive into the latest crypto buzz and see how Ezpro.club fits in.
+
+── 分镜 2/11 ──────────────────────
+⏱  停留时长：9.0 秒（视频时间轴：3.5s - 12.5s）
+🌐 打开页面：https://twitter.com/search?q=crypto%20liquidation%20event&src=typed_query
+🔍 聚焦区域：tweets_feed（将该区域置于屏幕中央）
+📜 页面操作：缓慢向下滚动页面
+🎤 同步台词：So, the crypto world is absolutely wild right now. We've seen a massive liquidation event overnight,...
+
+── 分镜 3/11 ──────────────────────
+⏱  停留时长：7.5 秒（视频时间轴：13.0s - 20.5s）
+🌐 打开页面：https://ezpro.club/
+🔍 聚焦区域：features_section（将该区域置于屏幕中央）
+📌 页面操作：固定展示，保持静止 7.5 秒
+🎤 同步台词：But here’s the thing. Amidst all this noise and volatility, tools that offer clarity and precision b...
+
+── 分镜 4/11 ──────────────────────
+⏱  停留时长：1.5 秒（视频时间轴：21.0s - 22.5s）
+🌐 打开页面：https://ezpro.club/
+🔍 聚焦区域：trading_charts_overview（将该区域置于屏幕中央）
+📌 页面操作：固定展示，保持静止 1.5 秒
+🎤 同步台词：Let’s break down what’s actually happening on the charts.
+
+── 分镜 5/11 ──────────────────────
+⏱  停留时长：14.0 秒（视频时间轴：22.5s - 36.5s）
+🌐 打开页面：https://coinglass.com/liquidation
+🔍 聚焦区域：btc_liquidation_heatmap（将该区域置于屏幕中央）
+📌 页面操作：固定展示，保持静止 14.0 秒
+🎤 同步台词：We’re seeing some serious liquidation heat on CoinGlass. Look at this – massive long liquidations in...
+
+── 分镜 6/11 ──────────────────────
+⏱  停留时长：17.5 秒（视频时间轴：37.0s - 54.5s）
+🌐 打开页面：https://ezpro.club/trade
+🔍 聚焦区域：naked_candlestick_chart_btc（将该区域置于屏幕中央）
+📌 页面操作：固定展示，保持静止 17.5 秒
+🎤 同步台词：Now, imagine trying to navigate that kind of uncertainty with a cluttered chart. It’s impossible. Ez...
+
+── 分镜 7/11 ──────────────────────
+⏱  停留时长：11.5 秒（视频时间轴：55.0s - 66.5s）
+🌐 打开页面：https://www.youtube.com/results?search_query=crypto+trader+analysis
+🔍 聚焦区域：video_feed（将该区域置于屏幕中央）
+📜 页面操作：缓慢向下滚动页面
+🎤 同步台词：I saw a video earlier today from a popular trader – I won't name names – claiming a massive rally wa...
+
+── 分镜 8/11 ──────────────────────
+⏱  停留时长：1.5 秒（视频时间轴：67.0s - 68.5s）
+🌐 打开页面：https://ezpro.club/
+🔍 聚焦区域：homepage（将该区域置于屏幕中央）
+📌 页面操作：固定展示，保持静止 1.5 秒
+🎤 同步台词：So, how do you put this into practice? It’s simple.
+
+── 分镜 9/11 ──────────────────────
+⏱  停留时长：3.5 秒（视频时间轴：69.0s - 72.5s）
+🌐 打开页面：https://ezpro.club/
+🔍 聚焦区域：homepage（将该区域置于屏幕中央）
+🖱  页面操作：点击页面刷新按钮
+🎤 同步台词：Head over to Ezpro.club. Refresh the page, see the live data for yourself.
+
+── 分镜 10/11 ──────────────────────
+⏱  停留时长：3.0 秒（视频时间轴：72.5s - 75.5s）
+🌐 打开页面：https://ezpro.club/challenge
+🔍 聚焦区域：15_win_challenge_section（将该区域置于屏幕中央）
+📌 页面操作：固定展示，保持静止 3.0 秒
+🎤 同步台词：Try the 15-win challenge – it’s a great way to get hands-on without risking a fortune.
+
+── 分镜 11/11 ──────────────────────
+⏱  停留时长：5.0 秒（视频时间轴：75.5s - 80.5s）
+🌐 打开页面：https://t.me/EzproClubOfficial
+🔍 聚焦区域：telegram_group_chat（将该区域置于屏幕中央）
+📜 页面操作：缓慢向下滚动页面
+🎤 同步台词：And if you want to connect with other traders who are serious about this stuff, who are looking for ...
+
+==================================================
+✅ 以上共 11 个分镜，合计约 80 秒。
+✅ 请全程保持录屏，操作完所有分镜后停止录制，保存为一个完整视频文件。
+✅ 完成后请回复：完成

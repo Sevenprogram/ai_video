@@ -1,0 +1,56 @@
+```json
+[
+  {
+    "id": 1,
+    "start_sec": 0,
+    "end_sec": 20.5,
+    "duration_sec": 20.5,
+    "page_type": "social",
+    "source": "youtube",
+    "url": "https://www.youtube.com/",
+    "view": "homepage",
+    "scroll_behavior": "none",
+    "action": "static_view",
+    "text_clip": "Wait... did you see this massive liquidation event yesterday? [clears throat] CoinGlass was showing over $500 million wiped out in just a few hours. [smacks lips] It's absolutely brutal out there for traders who aren't prepared. And honestly, a lot of that pain comes from trading on platforms that aren't truly transparent. [sighs]"
+  },
+  {
+    "id": 2,
+    "start_sec": 20.5,
+    "end_sec": 47.0,
+    "duration_sec": 26.5,
+    "page_type": "browser",
+    "source": "ezpro.club",
+    "url": "https://ezpro.club/",
+    "view": "homepage",
+    "scroll_behavior": "none",
+    "action": "static_view",
+    "text_clip": "That's where Ezpro.club's 15-win challenge really shines. [chuckles] It forces you to focus on a consistent strategy. Think about it: 15 wins, no matter what. It's not about hitting home runs; it's about building that discipline. And their Signal-Free mode? That's a game-changer. No more chasing signals from who-knows-where. It’s just you, the charts, and your strategy. Pure K-line trading environment – that’s what you need for true skill development."
+  },
+  {
+    "id": 3,
+    "start_sec": 47.0,
+    "end_sec": 113.0,
+    "duration_sec": 66.0,
+    "page_type": "browser",
+    "source": "ezpro.club",
+    "url": "https://ezpro.club/",
+    "view": "trading_chart_signal_free",
+    "scroll_behavior": "none",
+    "action": "static_view",
+    "text_clip": "Actually, let's dive into what this Signal-Free, K-line environment actually looks like. [pause] So, you're looking at the chart here, right? No indicators cluttering things up. We're talking pure price action. See this support level around $30,000? [smacks lips] Historically, the market has bounced here multiple times. And this resistance at $32,500? That’s been a tough nut to crack. In a Signal-Free environment, you’re not waiting for some magical arrow to appear. You’re identifying these levels yourself, based on pure price history. This is where your strategy comes into play. You define your entry and exit points based on these naked K-lines, not on some external signal that might be delayed or outright wrong. It’s about empowering your own analysis. [pause] You're developing an intuition that's far more valuable than any pre-packaged signal. [silent] [silent] [silent]"
+  },
+  {
+    "id": 4,
+    "start_sec": 113.0,
+    "end_sec": 180.0,
+    "duration_sec": 67.0,
+    "page_type": "social",
+    "source": "youtube",
+    "url": "https://www.youtube.com/",
+    "view": "homepage",
+    "scroll_behavior": "none",
+    "action": "static_view",
+    "text_clip": "And that's why we're seeing so much chatter about the importance of self-reliance in trading right now. [chuckles] Look, you can find countless YouTube videos out there promising instant riches. But when you peel back the layers, a lot of them are either overly complex or just… well, not that practical for the average trader. They might show you a fancy indicator, but they don't teach you the fundamental skill of reading the raw price action. That’s the difference Ezpro.club is bridging. We’re not selling you a dream; we’re giving you the tools to build your own reality. [pause] So, if you're tired of the noise and ready to focus on building real trading skills, come check us out. [pause] Join our Telegram group – the link is in the description – and let’s get you on the path to consistent wins. [silent] [silent] [silent]"
+  }
+]
+```
