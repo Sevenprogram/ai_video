@@ -1,0 +1,95 @@
+【录屏任务】视频_20260316_1739
+📋 总时长：约 60 秒 | 分镜数：10 个
+
+⚠️  操作说明：
+1. 开始前先开启录屏软件，录制整个屏幕。
+2. 按下方分镜顺序依次操作，每个分镜在对应页面停留指定时长。
+3. 所有分镜操作完成后停止录屏，将视频保存到本地。
+4. 完成后回复：完成
+==================================================
+
+── 分镜 1/10 ──────────────────────
+⏱  停留时长：5.5 秒（视频时间轴：0.0s - 5.5s）
+🌐 打开页面：https://twitter.com/search?q=bitcoin+liquidation
+🔍 聚焦区域：main_feed（将该区域置于屏幕中央）
+📜 页面操作：缓慢向下滚动页面
+🎤 同步台词：[sighs] Did you see the carnage on X this morning? [pause] Everyone’s talking about that massive lon...
+📝 备注：快速浏览带有暴跌讨论的推文流
+
+── 分镜 2/10 ──────────────────────
+⏱  停留时长：3.0 秒（视频时间轴：5.5s - 8.5s）
+🌐 打开页面：https://www.coinglass.com/LiquidationData
+🔍 聚焦区域：btc_liquidation_heatmap（将该区域置于屏幕中央）
+🖱  页面操作：鼠标缓慢悬停在高爆仓区域
+🎤 同步台词：[clears throat] It’s actually hilarious. Wait... actually, it’s not funny if it’s your money, right?...
+📝 备注：展示红色的爆仓热力图
+
+── 分镜 3/10 ──────────────────────
+⏱  停留时长：5.0 秒（视频时间轴：8.5s - 13.5s）
+🌐 打开页面：https://twitter.com/BradTrades/replies
+🔍 聚焦区域：comments_section（将该区域置于屏幕中央）
+📜 页面操作：缓慢向下滚动页面
+🎤 同步台词：I was looking at the recent feedback on Brad Trades’ latest session... [pause] ...people are chasing...
+📝 备注：滚动评论区展示散户对指标的盲从
+
+── 分镜 4/10 ──────────────────────
+⏱  停留时长：5.0 秒（视频时间轴：13.5s - 18.5s）
+🌐 打开页面：https://ezpro.trade/terminal
+🔍 聚焦区域：live_kline（将该区域置于屏幕中央）
+📌 页面操作：固定展示，保持静止 5.0 秒
+🎤 同步台词：Let’s look at reality for a second. [pause] [pause] This is what a real chart looks like. No lagging...
+📝 备注：切换至极其简洁的裸K线
+
+── 分镜 5/10 ──────────────────────
+⏱  停留时长：8.0 秒（视频时间轴：18.5s - 26.5s）
+🌐 打开页面：https://ezpro.trade/challenge
+🔍 聚焦区域：challenge_dashboard（将该区域置于屏幕中央）
+📌 页面操作：固定展示，保持静止 8.0 秒
+🎤 同步台词：[smacks lips] This is why we built the 15-win Challenge. [pause] If you can't hit those numbers with...
+📝 备注：展示Challenge界面
+
+── 分镜 6/10 ──────────────────────
+⏱  停留时长：6.0 秒（视频时间轴：26.5s - 32.5s）
+🌐 打开页面：https://ezpro.trade/terminal
+🔍 聚焦区域：live_kline（将该区域置于屏幕中央）
+📌 页面操作：固定展示，保持静止 6.0 秒
+🎤 同步台词： 
+📝 备注：留白时间，镜头定格在操作台，鼠标移至坐标轴
+
+── 分镜 7/10 ──────────────────────
+⏱  停留时长：10.0 秒（视频时间轴：32.5s - 42.5s）
+🌐 打开页面：https://ezpro.trade/terminal
+🔍 聚焦区域：live_kline（将该区域置于屏幕中央）
+🖱  页面操作：点击页面刷新按钮
+⌨  额外交互：点击绘图工具标注支撑位
+🎤 同步台词：Okay... [clears throat] ...my bad, let me just lock in this support level here. [pause] If you look ...
+📝 备注：重点展示Fib retracement支撑位
+
+── 分镜 8/10 ──────────────────────
+⏱  停留时长：6.0 秒（视频时间轴：42.5s - 48.5s）
+🌐 打开页面：https://ezpro.trade/terminal
+🔍 聚焦区域：live_kline（将该区域置于屏幕中央）
+📌 页面操作：固定展示，保持静止 6.0 秒
+🎤 同步台词：[chuckles] Most people would’ve been stopped out by the noise, but here? [pause] It’s just crystal c...
+📝 备注：缩放图表展示清爽界面
+
+── 分镜 9/10 ──────────────────────
+⏱  停留时长：7.0 秒（视频时间轴：48.5s - 55.5s）
+🌐 打开页面：https://twitter.com/Ezpro_Official
+🔍 聚焦区域：profile_bio（将该区域置于屏幕中央）
+📌 页面操作：固定展示，保持静止 7.0 秒
+🎤 同步台词：[sighs] If you're tired of being exit liquidity for the whales... stop following the hype. [pause] C...
+📝 备注：展示Telegram链接
+
+── 分镜 10/10 ──────────────────────
+⏱  停留时长：4.0 秒（视频时间轴：55.5s - 59.5s）
+🌐 打开页面：https://ezpro.trade
+🔍 聚焦区域：hero_section（将该区域置于屏幕中央）
+📌 页面操作：固定展示，保持静止 4.0 秒
+🎤 同步台词：Don’t get caught on the wrong side of the next liquidation wick. [pause] See you on the inside. [pau...
+📝 备注：品牌logo与CTA按钮
+
+==================================================
+✅ 以上共 10 个分镜，合计约 60 秒。
+✅ 请全程保持录屏，操作完所有分镜后停止录制，保存为一个完整视频文件。
+✅ 完成后请回复：完成

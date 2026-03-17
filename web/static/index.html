@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI 视频工作流仪表盘</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet" />
+<style>
+/* ─── Reset & Variables ─────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #0b0e14;
+  --surface:   #131720;
+  --border:    #1e2535;
+  --text:      #c9d1e0;
+  --muted:     #4a5568;
+  --accent:    #3ecf8e;
+  --accent2:   #5b7fff;
+  --warn:      #f6c90e;
+  --err:       #ff5c5c;
+
+  --step-script:     #5b7fff;
+  --step-audio:      #a78bfa;
+  --step-storyboard: #f6c90e;
+  --step-openclaw:   #3ecf8e;
+  --step-pipeline:   #fb923c;
+
+  --radius: 10px;
+  --mono: 'Space Mono', monospace;
+  --sans: 'DM Sans', sans-serif;
+}
+
+html, body { height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 14px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ─── Layout ────────────────────────────────────────────────── */
+.app {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  grid-template-rows: 52px 1fr;
+  height: 100vh;
+  gap: 0;
+}
+
+/* ─── Header ────────────────────────────────────────────────── */
+header {
+  grid-column: 1 / -1;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 12px;
+}
+header .logo {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--accent);
+  letter-spacing: 0.04em;
+}
+header .subtitle {
+  font-size: 12px;
+  color: var(--muted);
+}
+header .dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%,100% { opacity: 1; }
+  50% { opacity: .3; }
+}
+
+/* ─── Left Panel ─────────────────────────────────────────────── */
+.left-panel {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.section-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 14px 16px 8px;
+}
+
+/* prompt area */
+.prompt-box {
+  padding: 0 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+textarea#prompt {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.6;
+  padding: 10px 12px;
+  resize: none;
+  height: 160px;
+  outline: none;
+  transition: border-color .2s;
+}
+textarea#prompt:focus { border-color: var(--accent2); }
+
+/* toggle switch */
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 2px;
+  cursor: pointer;
+  user-select: none;
+}
+.toggle-label {
+  font-size: 11px;
+  color: var(--text);
+}
+.toggle-wrap {
+  position: relative;
+  width: 34px; height: 18px;
+  flex-shrink: 0;
+}
+.toggle-wrap input { opacity: 0; width: 0; height: 0; position: absolute; }
+.toggle-slider {
+  position: absolute;
+  inset: 0;
+  background: var(--border);
+  border-radius: 18px;
+  transition: background .2s;
+  cursor: pointer;
+}
+.toggle-slider::before {
+  content: '';
+  position: absolute;
+  width: 12px; height: 12px;
+  left: 3px; top: 3px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform .2s;
+}
+.toggle-wrap input:checked + .toggle-slider { background: var(--accent); }
+.toggle-wrap input:checked + .toggle-slider::before { transform: translateX(16px); }
+
+.btn-run {
+  background: var(--accent);
+  color: #000;
+  border: none;
+  border-radius: var(--radius);
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 700;
+  padding: 10px;
+  cursor: pointer;
+  transition: opacity .15s, transform .1s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+.btn-run:hover { opacity: .88; }
+.btn-run:active { transform: scale(.97); }
+.btn-run:disabled { opacity: .35; cursor: not-allowed; }
+
+/* history list */
+.history-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 8px 12px;
+}
+.history-list::-webkit-scrollbar { width: 4px; }
+.history-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.history-item {
+  padding: 9px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  margin-bottom: 4px;
+  transition: background .15s, border-color .15s;
+}
+.history-item:hover { background: rgba(255,255,255,.04); }
+.history-item.active { background: rgba(94,135,255,.1); border-color: var(--accent2); }
+
+.history-item .hi-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 3px;
+}
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 20px;
+  letter-spacing: .05em;
+}
+.status-badge.pending  { background: rgba(74,85,104,.3); color: var(--muted); }
+.status-badge.running  { background: rgba(91,127,255,.18); color: var(--accent2); }
+.status-badge.done     { background: rgba(62,207,142,.15); color: var(--accent); }
+.status-badge.error    { background: rgba(255,92,92,.15); color: var(--err); }
+
+.hi-time { font-size: 10px; color: var(--muted); font-family: var(--mono); }
+.hi-prompt { font-size: 11px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ─── Right Panel ────────────────────────────────────────────── */
+.right-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 16px;
+  gap: 14px;
+}
+
+/* ─── Steps Bar ──────────────────────────────────────────────── */
+.steps-bar {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+}
+
+.step-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: border-color .3s;
+  position: relative;
+  overflow: hidden;
+}
+.step-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--step-color, var(--border));
+  transform: scaleX(0);
+  transition: transform .4s ease;
+  transform-origin: left;
+}
+.step-card.running::before { transform: scaleX(1); animation: progress-bar 1.5s ease-in-out infinite alternate; }
+.step-card.done::before    { transform: scaleX(1); }
+
+@keyframes progress-bar {
+  from { transform: scaleX(0.1); }
+  to   { transform: scaleX(1); }
+}
+
+.step-icon {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  flex-shrink: 0;
+  background: rgba(255,255,255,.05);
+  transition: background .3s;
+}
+.step-info { min-width: 0; }
+.step-name { font-size: 11px; font-weight: 700; color: var(--text); letter-spacing: .04em; }
+.step-desc { font-size: 10px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* step state colours */
+.step-card[data-step="script"]     { --step-color: var(--step-script); }
+.step-card[data-step="audio"]      { --step-color: var(--step-audio); }
+.step-card[data-step="storyboard"] { --step-color: var(--step-storyboard); }
+.step-card[data-step="openclaw"]   { --step-color: var(--step-openclaw); }
+.step-card[data-step="pipeline"]   { --step-color: var(--step-pipeline); }
+
+.step-card.running .step-icon { background: color-mix(in srgb, var(--step-color) 20%, transparent); }
+.step-card.done    .step-icon { background: color-mix(in srgb, var(--step-color) 20%, transparent); }
+.step-card.error   .step-icon { background: rgba(255,92,92,.18); }
+
+/* ─── Body Row (Log + Results) ───────────────────────────────── */
+.body-row {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  min-height: 0;
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.panel-header {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Log */
+.log-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 14px;
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.7;
+}
+.log-body::-webkit-scrollbar { width: 4px; }
+.log-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.log-line { display: flex; gap: 8px; align-items: flex-start; }
+.log-line + .log-line { margin-top: 2px; }
+.log-ts { color: var(--muted); flex-shrink: 0; font-size: 10px; padding-top: 1px; }
+.log-step-tag {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  padding: 1px 5px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.log-msg { color: var(--text); word-break: break-all; }
+.log-line.step-script     .log-step-tag { background: rgba(91,127,255,.2);  color: var(--step-script); }
+.log-line.step-audio      .log-step-tag { background: rgba(167,139,250,.2); color: var(--step-audio); }
+.log-line.step-storyboard .log-step-tag { background: rgba(246,201,14,.15); color: var(--step-storyboard); }
+.log-line.step-openclaw   .log-step-tag { background: rgba(62,207,142,.15); color: var(--step-openclaw); }
+.log-line.step-done       .log-step-tag { background: rgba(62,207,142,.15); color: var(--accent); }
+.log-line.step-error      .log-step-tag { background: rgba(255,92,92,.15);  color: var(--err); }
+.log-line.step-error .log-msg { color: var(--err); }
+
+/* Results */
+.results-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.results-body::-webkit-scrollbar { width: 4px; }
+.results-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.result-block { display: flex; flex-direction: column; gap: 6px; }
+.result-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.result-label .dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.script-preview {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--text);
+  white-space: pre-wrap;
+  max-height: 140px;
+  overflow-y: auto;
+}
+.script-preview::-webkit-scrollbar { width: 3px; }
+.script-preview::-webkit-scrollbar-thumb { background: var(--border); }
+
+audio {
+  width: 100%;
+  border-radius: 6px;
+  filter: invert(0.88) hue-rotate(180deg);
+}
+
+.shots-table-wrap {
+  overflow-x: auto;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+.shots-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+.shots-table th {
+  background: var(--bg);
+  color: var(--muted);
+  font-weight: 700;
+  text-align: left;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  font-size: 10px;
+  letter-spacing: .05em;
+}
+.shots-table td {
+  padding: 5px 10px;
+  border-bottom: 1px solid rgba(30,37,53,.7);
+  vertical-align: top;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.shots-table tr:last-child td { border-bottom: none; }
+.shots-table tr:hover td { background: rgba(255,255,255,.025); }
+
+.source-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.source-badge.youtube    { background: rgba(255,0,0,.18); color: #ff6b6b; }
+.source-badge.twitter    { background: rgba(29,161,242,.18); color: #58b4f9; }
+.source-badge.coinglass  { background: rgba(246,201,14,.18); color: var(--warn); }
+.source-badge.ezpro      { background: rgba(62,207,142,.18); color: var(--accent); }
+.source-badge.tradingview{ background: rgba(91,127,255,.18); color: var(--accent2); }
+
+.recording-preview {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.7;
+  color: #9ca3af;
+  white-space: pre-wrap;
+  max-height: 140px;
+  overflow-y: auto;
+}
+.recording-preview::-webkit-scrollbar { width: 3px; }
+.recording-preview::-webkit-scrollbar-thumb { background: var(--border); }
+
+.openclaw-reply {
+  background: rgba(62,207,142,.08);
+  border: 1px solid rgba(62,207,142,.25);
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 12px;
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  gap: 8px;
+  padding: 40px;
+  text-align: center;
+}
+.empty-state .icon { font-size: 36px; opacity: .3; }
+.empty-state p { font-size: 12px; line-height: 1.6; }
+
+/* Spinner */
+.spinner {
+  display: inline-block;
+  width: 12px; height: 12px;
+  border: 2px solid rgba(255,255,255,.15);
+  border-top-color: var(--accent2);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Header -->
+  <header>
+    <div class="dot"></div>
+    <span class="logo">AI VIDEO WORKFLOW</span>
+    <span class="subtitle">仪表盘 · 实时进度监控</span>
+  </header>
+
+  <!-- Left Panel -->
+  <aside class="left-panel">
+    <div class="section-title">创作提示词</div>
+    <div class="prompt-box">
+      <textarea id="prompt" placeholder="输入提示词，或留空使用默认提示词…"></textarea>
+      <label class="toggle-row">
+        <span class="toggle-label">发送后等待 OpenClaw 回复</span>
+        <div class="toggle-wrap">
+          <input type="checkbox" id="wait-openclaw" checked />
+          <span class="toggle-slider"></span>
+        </div>
+      </label>
+      <button class="btn-run" id="btn-run" onclick="startJob()">
+        <span id="btn-icon">▶</span>
+        <span id="btn-text">开始生成</span>
+      </button>
+    </div>
+
+    <div class="section-title">历史任务</div>
+    <div class="history-list" id="history-list"></div>
+  </aside>
+
+  <!-- Right Panel -->
+  <main class="right-panel">
+
+    <!-- Steps Bar -->
+    <div class="steps-bar">
+      <div class="step-card" data-step="script" id="step-script">
+        <div class="step-icon">📝</div>
+        <div class="step-info">
+          <div class="step-name">文稿生成</div>
+          <div class="step-desc" id="step-script-desc">等待开始</div>
+        </div>
+      </div>
+      <div class="step-card" data-step="audio" id="step-audio">
+        <div class="step-icon">🎙</div>
+        <div class="step-info">
+          <div class="step-name">语音合成</div>
+          <div class="step-desc" id="step-audio-desc">等待开始</div>
+        </div>
+      </div>
+      <div class="step-card" data-step="storyboard" id="step-storyboard">
+        <div class="step-icon">🎬</div>
+        <div class="step-info">
+          <div class="step-name">分镜生成</div>
+          <div class="step-desc" id="step-storyboard-desc">等待开始</div>
+        </div>
+      </div>
+      <div class="step-card" data-step="openclaw" id="step-openclaw">
+        <div class="step-icon">🖥</div>
+        <div class="step-info">
+          <div class="step-name">OpenClaw</div>
+          <div class="step-desc" id="step-openclaw-desc">等待开始</div>
+        </div>
+      </div>
+      <div class="step-card" data-step="pipeline" id="step-pipeline">
+        <div class="step-icon">🎞</div>
+        <div class="step-info">
+          <div class="step-name">视频合成</div>
+          <div class="step-desc" id="step-pipeline-desc">等待开始</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Log + Results -->
+    <div class="body-row">
+
+      <!-- Log Panel -->
+      <div class="panel">
+        <div class="panel-header">
+          <span>实时日志</span>
+          <span id="log-spinner" style="display:none"><span class="spinner"></span></span>
+        </div>
+        <div class="log-body" id="log-body">
+          <div class="empty-state">
+            <div class="icon">⏳</div>
+            <p>启动工作流后，<br>实时日志将在这里显示。</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Results Panel -->
+      <div class="panel">
+        <div class="panel-header">产物预览</div>
+        <div class="results-body" id="results-body">
+          <div class="empty-state">
+            <div class="icon">🗂</div>
+            <p>工作流完成后，<br>生成的文稿、音频、分镜<br>将在这里展示。</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script>
+/* ─── State ──────────────────────────────────────────────────── */
+let activeJobId = null;
+let evtSource   = null;
+
+const STEP_META = {
+  script:     { label: '文稿生成',  icon: '📝' },
+  audio:      { label: '语音合成',  icon: '🎙' },
+  storyboard: { label: '分镜生成',  icon: '🎬' },
+  openclaw:   { label: 'OpenClaw', icon: '🖥' },
+  pipeline:   { label: '视频合成',  icon: '🎞' },
+};
+
+/* ─── Init ───────────────────────────────────────────────────── */
+document.addEventListener('DOMContentLoaded', async () => {
+  const res = await fetch('/api/default-prompt').catch(() => null);
+  if (res?.ok) {
+    const { prompt } = await res.json();
+    document.getElementById('prompt').placeholder = '留空使用默认提示词…';
+    document.getElementById('prompt').dataset.default = prompt;
+  }
+  await refreshHistory();
+  setInterval(refreshHistory, 5000);
+});
+
+/* ─── Start Job ──────────────────────────────────────────────── */
+async function startJob() {
+  const ta              = document.getElementById('prompt');
+  const prompt          = ta.value.trim();
+  const waitForOpenclaw = document.getElementById('wait-openclaw').checked;
+
+  setBtnLoading(true);
+  resetUI();
+
+  try {
+    const res = await fetch('/api/jobs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: prompt || null, wait_for_openclaw: waitForOpenclaw }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const { job_id } = await res.json();
+    selectJob(job_id);
+  } catch (e) {
+    appendLog({ step: 'error', msg: '创建任务失败: ' + e.message, ts: new Date().toISOString() });
+    setBtnLoading(false);
+  }
+}
+
+/* ─── Select / Load Job ──────────────────────────────────────── */
+async function selectJob(jobId) {
+  if (evtSource) { evtSource.close(); evtSource = null; }
+  activeJobId = jobId;
+
+  resetUI();
+  document.getElementById('log-spinner').style.display = '';
+
+  // load current state
+  const res = await fetch(`/api/jobs/${jobId}`);
+  if (!res.ok) return;
+  const job = await res.json();
+
+  // restore step states
+  Object.entries(job.steps || {}).forEach(([step, status]) => setStepState(step, status));
+  job.logs.forEach(entry => appendLog(entry));
+
+  if (job.status === 'done') {
+    renderArtifacts(job);
+    setBtnLoading(false);
+    document.getElementById('log-spinner').style.display = 'none';
+  } else if (job.status === 'error') {
+    setBtnLoading(false);
+    document.getElementById('log-spinner').style.display = 'none';
+  } else {
+    // subscribe to live stream
+    subscribeSSE(jobId);
+  }
+
+  refreshHistory();
+}
+
+function subscribeSSE(jobId) {
+  evtSource = new EventSource(`/api/jobs/${jobId}/stream`);
+
+  evtSource.onmessage = (e) => {
+    const entry = JSON.parse(e.data);
+    appendLog(entry);
+
+    if (entry.step && STEP_META[entry.step]) {
+      setStepState(entry.step, 'running');
+      const descEl = document.getElementById(`step-${entry.step}-desc`);
+      if (descEl) descEl.textContent = entry.msg.slice(0, 40);
+    }
+
+    if (entry.step === 'done') {
+      ['script','audio','storyboard','openclaw','pipeline'].forEach(s => setStepState(s, 'done'));
+      evtSource.close();
+      evtSource = null;
+      setBtnLoading(false);
+      document.getElementById('log-spinner').style.display = 'none';
+      fetch(`/api/jobs/${jobId}`).then(r => r.json()).then(job => renderArtifacts(job));
+    } else if (entry.step === 'error') {
+      evtSource.close();
+      evtSource = null;
+      setBtnLoading(false);
+      document.getElementById('log-spinner').style.display = 'none';
+    }
+  };
+
+  evtSource.onerror = () => {
+    evtSource.close();
+    evtSource = null;
+    setBtnLoading(false);
+    document.getElementById('log-spinner').style.display = 'none';
+  };
+}
+
+/* ─── Log ────────────────────────────────────────────────────── */
+function appendLog(entry) {
+  const body = document.getElementById('log-body');
+  // remove empty state
+  const empty = body.querySelector('.empty-state');
+  if (empty) empty.remove();
+
+  const ts  = entry.ts ? new Date(entry.ts).toLocaleTimeString('zh-CN', { hour12: false }) : '';
+  const div = document.createElement('div');
+  div.className = `log-line step-${entry.step || 'info'}`;
+  div.innerHTML = `
+    <span class="log-ts">${ts}</span>
+    <span class="log-step-tag">${(entry.step || 'info').toUpperCase()}</span>
+    <span class="log-msg">${esc(entry.msg || '')}</span>`;
+  body.appendChild(div);
+  body.scrollTop = body.scrollHeight;
+}
+
+/* ─── Step State ─────────────────────────────────────────────── */
+function setStepState(step, status) {
+  const card = document.getElementById(`step-${step}`);
+  if (!card) return;
+  card.classList.remove('pending', 'running', 'done', 'error');
+  card.classList.add(status);
+
+  const iconEl = card.querySelector('.step-icon');
+  if (!iconEl) return;
+  const icons = { pending: STEP_META[step]?.icon || '○',
+                  running: '⚙️', done: '✅', error: '❌' };
+  iconEl.textContent = icons[status] || STEP_META[step]?.icon;
+}
+
+/* ─── Artifacts ──────────────────────────────────────────────── */
+function renderArtifacts(job) {
+  const body = document.getElementById('results-body');
+  body.innerHTML = '';
+  const a = job.artifacts || {};
+  const folder = a.folder;
+
+  // Script
+  if (a.script) {
+    fetch(`/api/files/${folder}/script.txt`).then(r => r.text()).then(text => {
+      addBlock(body, '📝 口播文稿', 'var(--step-script)', `
+        <div class="script-preview">${esc(text)}</div>
+        <a href="/api/files/${folder}/script.txt" download style="font-size:11px;color:var(--accent2)">下载 script.txt</a>
+      `);
+    });
+  }
+
+  // Audio
+  if (a.audio) {
+    addBlock(body, '🎙 语音音频', 'var(--step-audio)', `
+      <audio controls src="/api/files/${folder}/audio.mp3"></audio>
+      <a href="/api/files/${folder}/audio.mp3" download style="font-size:11px;color:var(--accent2)">下载 audio.mp3</a>
+    `);
+  }
+
+  // Shots Table
+  const shots = a.shots || [];
+  if (shots.length) {
+    const rows = shots.map(s => `
+      <tr>
+        <td>${s.id}</td>
+        <td>${s.start_sec?.toFixed(1)}s</td>
+        <td>${s.end_sec?.toFixed(1)}s</td>
+        <td><span class="source-badge ${s.source || ''}">${s.source || '-'}</span></td>
+        <td title="${esc(s.url || '')}">${esc((s.url || '').replace('https://', '').slice(0,30))}${(s.url||'').length>30?'…':''}</td>
+        <td>${esc(s.view || '-')}</td>
+        <td>${esc(s.action || '-')}</td>
+      </tr>`).join('');
+
+    addBlock(body, `🎬 分镜表 (${shots.length} 个)`, 'var(--step-storyboard)', `
+      <div class="shots-table-wrap">
+        <table class="shots-table">
+          <thead><tr>
+            <th>#</th><th>开始</th><th>结束</th>
+            <th>来源</th><th>URL</th><th>视图</th><th>操作</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      ${a.storyboard_xlsx ? `<a href="/api/files/${folder}/storyboard.xlsx" download style="font-size:11px;color:var(--accent2)">下载 storyboard.xlsx</a>` : ''}
+    `);
+  }
+
+  // Recording Instruction
+  if (a.recording_task) {
+    fetch(`/api/files/${folder}/recording_task.txt`).then(r => r.text()).then(text => {
+      const replyHtml = a.openclaw_reply
+        ? `<div class="openclaw-reply">✅ OpenClaw 回复：${esc(a.openclaw_reply)}</div>`
+        : '';
+      addBlock(body, '🖥 OpenClaw 录屏指令', 'var(--step-openclaw)', `
+        <div class="recording-preview">${esc(text)}</div>
+        ${replyHtml}
+        <a href="/api/files/${folder}/recording_task.txt" download style="font-size:11px;color:var(--accent2)">下载 recording_task.txt</a>
+      `);
+    });
+  }
+
+  // Final Video
+  if (a.final_video) {
+    addBlock(body, '🎞 最终合成视频', 'var(--step-pipeline)', `
+      <video controls style="width:100%;border-radius:6px;max-height:200px;background:#000"
+             src="/api/files/${folder}/final.mp4"></video>
+      <a href="/api/files/${folder}/final.mp4" download style="font-size:11px;color:var(--accent2)">下载 final.mp4</a>
+    `);
+  }
+}
+
+function addBlock(container, label, dotColor, innerHtml) {
+  const block = document.createElement('div');
+  block.className = 'result-block';
+  block.innerHTML = `
+    <div class="result-label">
+      <span class="dot" style="background:${dotColor}"></span>
+      ${label}
+    </div>
+    ${innerHtml}`;
+  container.appendChild(block);
+}
+
+/* ─── History ────────────────────────────────────────────────── */
+async function refreshHistory() {
+  const res = await fetch('/api/jobs').catch(() => null);
+  if (!res?.ok) return;
+  const jobs = await res.json();
+
+  const list = document.getElementById('history-list');
+  list.innerHTML = '';
+
+  if (!jobs.length) {
+    list.innerHTML = '<div style="padding:10px 12px;color:var(--muted);font-size:11px">暂无任务</div>';
+    return;
+  }
+
+  jobs.forEach(job => {
+    const el = document.createElement('div');
+    el.className = 'history-item' + (job.id === activeJobId ? ' active' : '');
+    el.onclick = () => selectJob(job.id);
+    const t = new Date(job.created_at).toLocaleTimeString('zh-CN', { hour12: false, hour: '2-digit', minute: '2-digit' });
+    el.innerHTML = `
+      <div class="hi-status">
+        <span class="status-badge ${job.status}">${statusLabel(job.status)}</span>
+        <span class="hi-time">${t}</span>
+      </div>
+      <div class="hi-prompt">${esc(job.prompt)}</div>`;
+    list.appendChild(el);
+  });
+}
+
+function statusLabel(s) {
+  return { pending: '待运行', running: '运行中', done: '完成', error: '失败' }[s] || s;
+}
+
+/* ─── Helpers ────────────────────────────────────────────────── */
+function resetUI() {
+  const logBody = document.getElementById('log-body');
+  logBody.innerHTML = `<div class="empty-state"><div class="icon">⏳</div><p>实时日志将在这里显示。</p></div>`;
+
+  const resBody = document.getElementById('results-body');
+  resBody.innerHTML = `<div class="empty-state"><div class="icon">🗂</div><p>工作流完成后，产物将在这里展示。</p></div>`;
+
+  ['script','audio','storyboard','openclaw','pipeline'].forEach(s => {
+    setStepState(s, 'pending');
+    const desc = document.getElementById(`step-${s}-desc`);
+    if (desc) desc.textContent = '等待开始';
+  });
+}
+
+function setBtnLoading(loading) {
+  const btn  = document.getElementById('btn-run');
+  const icon = document.getElementById('btn-icon');
+  const text = document.getElementById('btn-text');
+  btn.disabled = loading;
+  if (loading) {
+    icon.innerHTML = '<span class="spinner" style="border-top-color:#000"></span>';
+    text.textContent = '生成中…';
+  } else {
+    icon.textContent = '▶';
+    text.textContent = '开始生成';
+  }
+}
+
+function esc(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+</script>
+</body>
+</html>

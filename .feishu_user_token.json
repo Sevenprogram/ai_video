@@ -1,0 +1,9 @@
+{
+  "access_token": "u-41q_H_4sJ9I8EfP4iCn.iXh0kDzRhhOpM2aymxE02FwB",
+  "refresh_token": "ur-7Lapqlku57xHqemO.IakzQh0m7zRhhUpgiay3BU02EMN",
+  "token_type": "Bearer",
+  "expires_in": 7200,
+  "refresh_expires_in": 2592000,
+  "scope": "auth:user.id:read im:message im:message.send_as_user im:message:send_as_bot",
+  "cached_at": 1773711825.979891
+}

@@ -1,0 +1,77 @@
+【录屏任务】视频_20260317_1036
+📋 总时长：约 104 秒 | 分镜数：9 个
+
+⚠️  操作说明：
+1. 开始前先开启录屏软件，录制整个屏幕。
+2. 按下方分镜顺序依次操作，每个分镜在对应页面停留指定时长。
+3. 所有分镜操作完成后停止录屏，将视频保存到本地。
+4. 完成后回复：完成
+==================================================
+
+── 分镜 1/9 ──────────────────────
+⏱  停留时长：11.9 秒（视频时间轴：0.0s - 11.9s）
+🌐 打开页面：https://www.youtube.com/watch?v=example_intro
+🔍 聚焦区域：video_player（将该区域置于屏幕中央）
+📌 页面操作：固定展示，保持静止 11.9 秒
+🎤 同步台词：Alright, let's dive right in. You see this? [smacks lips] This is the kind of headline that makes yo...
+
+── 分镜 2/9 ──────────────────────
+⏱  停留时长：13.2 秒（视频时间轴：12.4s - 25.6s）
+🌐 打开页面：https://ezpro.club/
+🔍 聚焦区域：homepage（将该区域置于屏幕中央）
+📌 页面操作：固定展示，保持静止 13.2 秒
+🎤 同步台词：But what if there was a way to cut through the noise? A way to trade with an almost unnerving clarit...
+
+── 分镜 3/9 ──────────────────────
+⏱  停留时长：17.4 秒（视频时间轴：26.1s - 43.5s）
+🌐 打开页面：https://twitter.com/search?q=ETH%2Fසර BTC
+🔍 聚焦区域：feed（将该区域置于屏幕中央）
+📜 页面操作：缓慢向下滚动页面
+🎤 同步台词：Now, let's talk about what’s actually happening in the market right now. I was scrolling through Twi...
+
+── 分镜 4/9 ──────────────────────
+⏱  停留时长：14.1 秒（视频时间轴：44.0s - 58.1s）
+🌐 打开页面：https://ezpro.club/charts?pair=ETHBTC
+🔍 聚焦区域：eth_btc_kline_chart_signal_free（将该区域置于屏幕中央）
+📌 页面操作：固定展示，保持静止 14.1 秒
+🎤 同步台词：This is where the naked K-line environment on Ezpro really shines. Look at this chart for ETH/BTC. [...
+
+── 分镜 5/9 ──────────────────────
+⏱  停留时长：7.6 秒（视频时间轴：58.1s - 65.7s）
+🌐 打开页面：https://ezpro.club/charts?pair=ETHBTC
+🔍 聚焦区域：eth_btc_kline_chart_signal_free_zoomed（将该区域置于屏幕中央）
+📌 页面操作：固定展示，保持静止 7.6 秒
+🎤 同步台词：Wait... actually, let's zoom in on that wick rejection yesterday. See how it perfectly bounced off t...
+
+── 分镜 6/9 ──────────────────────
+⏱  停留时长：9.7 秒（视频时间轴：66.2s - 75.9s）
+🌐 打开页面：https://www.coinglass.com/futures/BTC/liquidations
+🔍 聚焦区域：btc_liquidation_heatmap（将该区域置于屏幕中央）
+📌 页面操作：固定展示，保持静止 9.7 秒
+🎤 同步台词：Let's look at the broader market sentiment for a second. I checked CoinGlass earlier today. The liqu...
+
+── 分镜 7/9 ──────────────────────
+⏱  停留时长：4.0 秒（视频时间轴：76.4s - 80.4s）
+🌐 打开页面：https://ezpro.club/
+🔍 聚焦区域：homepage（将该区域置于屏幕中央）
+🖱  页面操作：点击页面刷新按钮
+🎤 同步台词：Now, let’s actually jump into the platform. [silent] [silent] [silent] So, here we are on Ezpro. I’m...
+
+── 分镜 8/9 ──────────────────────
+⏱  停留时长：8.0 秒（视频时间轴：80.4s - 88.4s）
+🌐 打开页面：https://ezpro.club/
+🔍 聚焦区域：signal_free_mode_interface（将该区域置于屏幕中央）
+📌 页面操作：固定展示，保持静止 8.0 秒
+🎤 同步台词：And as you can see, we’re in the Signal-Free mode. You can easily draw your support and resistance l...
+
+── 分镜 9/9 ──────────────────────
+⏱  停留时长：15.5 秒（视频时间轴：88.9s - 104.4s）
+🌐 打开页面：https://ezpro.club/
+🔍 聚焦区域：homepage（将该区域置于屏幕中央）
+📌 页面操作：固定展示，保持静止 15.5 秒
+🎤 同步台词：If you’re tired of the endless signal groups, the conflicting advice, and the constant guesswork, th...
+
+==================================================
+✅ 以上共 9 个分镜，合计约 104 秒。
+✅ 请全程保持录屏，操作完所有分镜后停止录制，保存为一个完整视频文件。
+✅ 完成后请回复：完成
