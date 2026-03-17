@@ -1,5 +1,5 @@
 """
-OpenClaw 飞书集成：以用户身份发消息、创建 P2P 会话、监听机器人回复。
+OpenClaw 飞书集成：以用户身份发消息到指定群组、监听机器人回复。
 """
 import os
 import sys
@@ -23,10 +23,6 @@ from config import (
     FEISHU_APP_SECRET as _CFG_FEISHU_APP_SECRET,
     FEISHU_BASE_URL as _CFG_FEISHU_BASE_URL,
     FEISHU_TARGET_CHAT_ID,
-    OPENCLAW_BOT_OPEN_ID,
-    OPENCLAW_BOT_APP_ID,
-    OPENCLAW_P2P_CHAT_ID,
-    OPENCLAW_USE_P2P,
 )
 
 OPENCLAW_URL = OPENCLAW_GATEWAY_URL
@@ -103,40 +99,6 @@ class FeishuClient:
             if not page_token:
                 break
         return members
-
-    def create_p2p_chat(
-        self,
-        user_open_id: str,
-        bot_app_id: str,
-    ) -> str:
-        """
-        创建与指定机器人的 P2P 会话，返回 chat_id。
-        用于绕过 open_id cross app 限制。
-        """
-        token = self._get_tenant_token()
-        url = f"{self.base_url}/open-apis/im/v1/chats"
-        payload = {
-            "name": "P2P",
-            "chat_mode": "p2p",
-            "chat_type": "p2p",
-            "user_id_list": [user_open_id],
-            "bot_id_list": [bot_app_id],
-        }
-        r = requests.post(
-            url,
-            headers={"Authorization": f"Bearer {token}"},
-            json=payload,
-            timeout=15,
-            proxies=self._NO_PROXY,
-        )
-        r.raise_for_status()
-        data = r.json()
-        if data.get("code") != 0:
-            raise RuntimeError(f"创建 P2P 会话失败：{data}")
-        chat_id = data.get("data", {}).get("chat_id", "")
-        if not chat_id:
-            raise RuntimeError("创建 P2P 会话返回的 chat_id 为空")
-        return chat_id
 
 
 class FeishuUserAuth:
@@ -338,7 +300,7 @@ class FeishuReplyWaiter:
         self._lock = threading.Lock()
         self._running = False
         self._client: Optional[lark.Client] = None
-        self._dispatcher: Optional[lark.event.Dispatcher] = None
+        self._dispatcher: Optional[lark.EventDispatcherHandler] = None
 
     def _handler(self, data: P2ImMessageReceiveV1) -> None:
         try:
@@ -375,7 +337,7 @@ class FeishuReplyWaiter:
     def start(self) -> None:
         self._running = True
         self._client = lark.Client.builder().app_id(self.app_id).app_secret(self.app_secret).build()
-        self._dispatcher = lark.event.Dispatcher.builder("", "").register_p2_im_message_receive_v1(self._handler).build()
+        self._dispatcher = lark.EventDispatcherHandler.builder("", "").register_p2_im_message_receive_v1(self._handler).build()
         # 使用轮询模拟：实际项目中可用 WebSocket 订阅
         # 此处简化，不启动独立线程，由 wait() 轮询
 
@@ -395,41 +357,6 @@ class FeishuReplyWaiter:
         return None
 
 
-_P2P_CHAT_CACHE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".feishu_p2p_chat_id")
-
-
-def _get_openclaw_p2p_chat_id(user_auth: "FeishuUserAuth") -> Optional[str]:
-    """获取与 OpenClaw 的 P2P chat_id。优先 config，否则创建并缓存。"""
-    if OPENCLAW_P2P_CHAT_ID and OPENCLAW_P2P_CHAT_ID.strip():
-        return OPENCLAW_P2P_CHAT_ID.strip()
-    if not OPENCLAW_BOT_APP_ID or not OPENCLAW_BOT_APP_ID.startswith("cli_"):
-        return None
-    try:
-        if os.path.isfile(_P2P_CHAT_CACHE_FILE):
-            with open(_P2P_CHAT_CACHE_FILE, "r", encoding="utf-8") as f:
-                cached = f.read().strip()
-                if cached and cached.startswith("oc_"):
-                    return cached
-    except Exception:
-        pass
-    try:
-        user_info = user_auth.get_user_info()
-        user_open_id = user_info.get("open_id") or user_info.get("user_id")
-        if not user_open_id:
-            return None
-        client = FeishuClient(app_id=FEISHU_APP_ID, app_secret=FEISHU_APP_SECRET)
-        chat_id = client.create_p2p_chat(user_open_id=user_open_id, bot_app_id=OPENCLAW_BOT_APP_ID)
-        try:
-            with open(_P2P_CHAT_CACHE_FILE, "w", encoding="utf-8") as f:
-                f.write(chat_id)
-        except Exception:
-            pass
-        return chat_id
-    except Exception as e:
-        print(f"[openclaw] 创建 P2P 会话失败: {e}")
-        return None
-
-
 def send_as_user_and_wait_reply(
     command: str,
     *,
@@ -439,24 +366,17 @@ def send_as_user_and_wait_reply(
     app_id: str | None = None,
     app_secret: str | None = None,
     cancel_check: Optional[Callable[[], bool]] = None,
+    extend_check: Optional[Callable[[], bool]] = None,
 ) -> Optional[str]:
     """
-    以【用户身份】向飞书发指令。当 wait=True 时等待 OpenClaw 回复；wait=False 则仅发送不等待。
-    当 OPENCLAW_USE_P2P=True 时，发到机器人私聊；否则发到群聊。
+    以【用户身份】向飞书指定群组发指令。当 wait=True 时等待 OpenClaw 回复；wait=False 则仅发送不等待。
+    cancel_check: 返回 True 时停止等待。
+    extend_check: 返回 True 时延长 60 秒等待时间。
     """
     _app_id = app_id or FEISHU_APP_ID
     _app_secret = app_secret or FEISHU_APP_SECRET
     user_auth = FeishuUserAuth(app_id=_app_id, app_secret=_app_secret)
-    target_chat_id: Optional[str] = None
-    if OPENCLAW_USE_P2P:
-        target_chat_id = _get_openclaw_p2p_chat_id(user_auth)
-        if not target_chat_id:
-            raise RuntimeError(
-                "OPENCLAW_USE_P2P=True 但无法获取 P2P chat_id。"
-                "请运行 python3 get_p2p_chat_id.py 获取 chat_id，并填入 config.py 的 OPENCLAW_P2P_CHAT_ID。"
-            )
-    else:
-        target_chat_id = chat_id or FEISHU_TARGET_CHAT_ID
+    target_chat_id = chat_id or FEISHU_TARGET_CHAT_ID
 
     waiter = FeishuReplyWaiter(
         app_id=_app_id,
@@ -468,13 +388,12 @@ def send_as_user_and_wait_reply(
     try:
         sent_at = time.time()
         user_auth.send_text_as_user(receive_id=target_chat_id, text=command, receive_id_type="chat_id")
-        mode = "P2P 私聊" if OPENCLAW_USE_P2P else "群聊"
-        print(f"[openclaw] 已以用户身份发送指令到 {mode}：{command!r}")
+        print(f"[openclaw] 已以用户身份发送指令到群聊：{command!r}")
         if not wait:
             print("[openclaw] 不等待回复，已返回。")
             return None
         print(f"[openclaw] 等待 OpenClaw 回复（最多 {timeout} 秒）...")
-        if cancel_check:
+        if cancel_check or extend_check:
             chunk = 10.0
             elapsed = 0.0
             while elapsed < timeout:
@@ -487,6 +406,9 @@ def send_as_user_and_wait_reply(
                 if cancel_check and cancel_check():
                     print(f"[openclaw] 用户选择跳过等待。")
                     return None
+                if extend_check and extend_check():
+                    elapsed = max(0, elapsed - 60)
+                    print(f"[openclaw] 用户选择再等待 60 秒，剩余时间延长。")
         else:
             reply = waiter.wait(sent_at=sent_at, timeout=timeout)
             if reply is None:
@@ -496,21 +418,6 @@ def send_as_user_and_wait_reply(
             return reply
     finally:
         waiter.stop()
-
-
-def send_as_user_p2p_and_wait_reply(
-    command: str,
-    *,
-    bot_open_id: str | None = None,
-    timeout: float = 120.0,
-    app_id: str | None = None,
-    app_secret: str | None = None,
-) -> Optional[str]:
-    """
-    以【用户身份】向指定机器人发起私聊，并等待其回复。
-    使用 open_id 时可能遇到 cross app 错误，建议使用 send_as_user_and_wait_reply + OPENCLAW_USE_P2P。
-    """
-    return send_as_user_and_wait_reply(command, timeout=timeout, app_id=app_id, app_secret=app_secret)
 
 
 if __name__ == "__main__":

@@ -158,8 +158,8 @@ textarea#prompt:focus { border-color: var(--accent2); }
         <option value="local">使用本地视频</option>
       </select>
       <div class="prompt-section" id="promptSection">
-        <label for="prompt">提示词（发给 OpenClaw）</label>
-        <textarea id="prompt" placeholder="输入录屏任务描述，例如：请打开 coinglass.com 并录制爆仓热力图页面 60 秒…"></textarea>
+        <label for="prompt">提示词（AI 将自动转换为结构化指令）</label>
+        <textarea id="prompt" placeholder="输入自由描述，例如：请打开 coinglass.com 并录制爆仓热力图 60 秒，然后打开 ezpro.club 的 daytrade 页面…"></textarea>
       </div>
       <div class="checkbox-row">
         <label class="checkbox-label"><input type="checkbox" id="wait-openclaw" checked /> 等待 OpenClaw 回复</label>
@@ -246,7 +246,7 @@ async function loadLocalVideoSelects() {
     const data = await videosRes.json();
     const defaults = await defaultsRes.json();
     const defaultFiles = {
-      digital_human: (defaults.digital_human || '').split('/').pop() || 'idle_hands_open.mp4',
+      digital_human: (defaults.digital_human || '').split('/').pop() || 'jirian',
       cartoon_head: (defaults.cartoon_head || '').split('/').pop() || 'pig.mp4',
       video_shoot: (defaults.recording || '').split('/').pop() || 'template.mp4',
     };
@@ -320,8 +320,8 @@ async function selectJob(jobId) {
     const job = await res.json();
     setStepState('openclaw', job.status === 'done' ? 'done' : job.status === 'error' ? 'error' : job.status === 'running' ? 'running' : 'pending');
     (job.logs || []).forEach(e => appendLog({ step: e.step || 'info', msg: e.text || e.msg, ts: e.ts }));
-    if (job.openclaw_reply) {
-      renderReply(job.openclaw_reply);
+    if (job.instruction || job.openclaw_reply) {
+      renderResults(job);
     }
     if (job.status === 'done' || job.status === 'error') {
       document.getElementById('btn-run').disabled = false;
@@ -342,7 +342,7 @@ function subscribeSSE(jobId) {
     const text = d.text || '';
     const isWaiting = /等待|OpenClaw|发送给/.test(text);
     appendLog({ step: isWaiting ? 'openclaw' : 'info', msg: text, ts: d.ts });
-    if (/发送给 OpenClaw|录屏先行流程/.test(text)) {
+    if (/发送给 OpenClaw|AI 正在|录屏先行流程/.test(text)) {
       setStepState('openclaw', 'running');
       document.getElementById('skipRow').classList.remove('hidden');
     }
@@ -390,13 +390,21 @@ function setStepState(step, status) {
   if (icon) icon.textContent = { pending: '○', running: '⚙️', done: '✅', error: '❌' }[status] || '○';
 }
 
-function renderReply(reply) {
+function renderResults(job) {
   const body = document.getElementById('results-body');
   body.innerHTML = '';
-  const block = document.createElement('div');
-  block.className = 'result-block';
-  block.innerHTML = '<div class="result-label">OpenClaw 回复</div><div class="openclaw-reply">' + esc(reply || '（无）') + '</div>';
-  body.appendChild(block);
+  if (job.instruction) {
+    const block = document.createElement('div');
+    block.className = 'result-block';
+    block.innerHTML = '<div class="result-label">📋 已发送的录屏指令（AI 转换后）</div><div class="openclaw-reply" style="white-space:pre-wrap;max-height:200px;overflow-y:auto">' + esc(job.instruction) + '</div>';
+    body.appendChild(block);
+  }
+  if (job.openclaw_reply) {
+    const block = document.createElement('div');
+    block.className = 'result-block';
+    block.innerHTML = '<div class="result-label">OpenClaw 回复</div><div class="openclaw-reply">' + esc(job.openclaw_reply) + '</div>';
+    body.appendChild(block);
+  }
 }
 
 async function refreshHistory() {

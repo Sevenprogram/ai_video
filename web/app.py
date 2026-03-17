@@ -19,8 +19,7 @@ from pydantic import BaseModel
 from typing import Optional
 
 # 导入主流程
-from main import build_storyboard_prompt, build_recording_instruction
-from module import gemini_complete
+from main import build_storyboard_prompt, build_recording_instruction, run_workflow, DEFAULT_PROMPT, prompt_to_recording_instruction
 from openclaw import send_as_user_and_wait_reply
 from config import (
     OPENCLAW_REPLY_TIMEOUT,
@@ -66,7 +65,7 @@ def _log(job_id: str, msg: str, step: str = "info") -> None:
 
 # ─── API：主流程 ─────────────────────────────────────────────────────
 class CreateJobRequest(BaseModel):
-    script: str
+    prompt: Optional[str] = ""  # 创作提示词，留空则使用默认（Ezpro/加密货币短视频）
     openclaw_timeout: Optional[int] = None
     target_duration_minutes: Optional[int] = None  # 文稿目标时长（分钟）
     wait_openclaw: Optional[bool] = True  # 是否等待 OpenClaw 回复
@@ -87,7 +86,7 @@ def create_job(req: CreateJobRequest):
             "created_at": datetime.now().isoformat(),
             "skip_openclaw": False,
             "openclaw_manual_filename": None,
-            "script": req.script[:200] if req.script else "",
+            "prompt": (req.prompt or "")[:200].strip() or "(默认提示词)",
             "folder": None,
             "steps": {},
             "artifacts": {},
@@ -100,71 +99,82 @@ def create_job(req: CreateJobRequest):
     def run():
         with jobs_lock:
             jobs[job_id]["status"] = "running"
-        try:
-            target_mins = req.target_duration_minutes if req.target_duration_minutes is not None else None
-            _log(job_id, "[1/4] 生成分镜提示词...", "storyboard")
-            prompt = build_storyboard_prompt(req.script, minutes=target_mins)
-            _log(job_id, "[2/4] 调用 LLM 生成分镜 JSON...", "storyboard")
-            storyboard = gemini_complete(prompt)
-            text = storyboard.strip()
-            if text.startswith("```"):
-                text = text.split("\n", 1)[-1].rsplit("```", 1)[0]
-            data = json.loads(text)
-            shots = data.get("shots", data) if isinstance(data, dict) else data
-            folder_name = f"视频_{datetime.now().strftime('%Y%m%d_%H%M')}"
-            out_dir = OUTPUTS / folder_name
-            out_dir.mkdir(parents=True, exist_ok=True)
-            (out_dir / "storyboard.txt").write_text(storyboard, encoding="utf-8")
-            (out_dir / "script.txt").write_text(req.script, encoding="utf-8")
-            with jobs_lock:
-                jobs[job_id]["folder"] = folder_name
-                jobs[job_id]["steps"]["storyboard"] = "done"
-                jobs[job_id]["artifacts"] = {"script": True, "storyboard": True, "shots": shots, "folder": folder_name}
-            _log(job_id, f"[3/4] 生成录屏指令，共 {len(shots)} 个分镜...", "openclaw")
-            instruction = build_recording_instruction(shots, folder_name)
-            (out_dir / "recording_task.txt").write_text(instruction, encoding="utf-8")
-            with jobs_lock:
-                jobs[job_id]["artifacts"]["recording_task"] = True
-            _log(job_id, "[4/4] 等待发送给 OpenClaw...", "openclaw")
+
+        def log_fn(step: str, msg: str, **extra):
+            _log(job_id, msg, step)
             with jobs_lock:
                 j = jobs.get(job_id, {})
-                if j.get("skip_openclaw"):
-                    _log(job_id, "用户选择跳过，使用最新/指定视频继续", "done")
-                    jobs[job_id]["status"] = "done"
+                if not j:
                     return
-                if j.get("use_local_videos"):
-                    _log(job_id, "使用本地视频模式，跳过 OpenClaw", "done")
-                    dig = _resolve_local_video_path(
-                        "digital_human", j.get("local_digital_human"),
-                        VIDEO_DIGITAL_HUMAN_DEFAULT, VIDEO_DIGITAL_HUMAN_DIR
-                    )
-                    cart = _resolve_local_video_path(
-                        "cartoon_head", j.get("local_cartoon_head"),
-                        VIDEO_CARTOON_HEAD_DEFAULT, VIDEO_CARTOON_HEAD_DIR
-                    )
-                    rec = _resolve_local_video_path(
-                        "recording", j.get("local_recording"),
-                        VIDEO_SHOOT_DEFAULT, VIDEO_SHOOT_DIR
-                    )
-                    jobs[job_id]["artifacts"]["local_videos"] = {
-                        "digital_human": dig,
-                        "cartoon_head": cart,
-                        "recording": rec,
-                    }
-                    jobs[job_id]["steps"]["openclaw"] = "done"
-                    jobs[job_id]["status"] = "done"
-                    return
+                if "folder" in extra:
+                    j["folder"] = j["artifacts"]["folder"] = extra["folder"]
+                if "shots" in extra:
+                    j["artifacts"]["shots"] = extra["shots"]
+                if "path" in extra and "artifact" in extra:
+                    j["artifacts"][extra["artifact"]] = extra["path"]
+                if "artifacts" in extra:
+                    j["artifacts"].update(extra["artifacts"])
+                if "reply" in extra:
+                    j["artifacts"]["openclaw_reply"] = (extra["reply"] or "")[:500]
+
+        try:
+            duration_mins = req.target_duration_minutes if req.target_duration_minutes is not None else None
+            if duration_mins is None:
+                from config import VIDEO_DURATION_MINUTES
+                duration_mins = VIDEO_DURATION_MINUTES
             timeout_sec = req.openclaw_timeout if req.openclaw_timeout is not None else OPENCLAW_REPLY_TIMEOUT
-            wait_oc = req.wait_openclaw if req.wait_openclaw is not None else True
-            reply = send_as_user_and_wait_reply(instruction, timeout=timeout_sec, wait=wait_oc)
+
+            def cancel_check():
+                with jobs_lock:
+                    return jobs.get(job_id, {}).get("skip_openclaw", False)
+
+            def extend_check():
+                with jobs_lock:
+                    v = jobs.get(job_id, {}).get("extend_openclaw", False)
+                    if v:
+                        jobs[job_id]["extend_openclaw"] = False
+                    return v
+
+            def get_skip_filename():
+                with jobs_lock:
+                    j = jobs.get(job_id, {})
+                    if j.get("skip_openclaw"):
+                        return j.get("openclaw_manual_filename")
+                return None
+
+            prompt_text = (req.prompt or "").strip() or DEFAULT_PROMPT
+            artifacts = run_workflow(
+                prompt=prompt_text,
+                log_fn=log_fn,
+                outputs_base=str(OUTPUTS),
+                wait_for_openclaw=req.wait_openclaw if req.wait_openclaw is not None else True,
+                duration_minutes=duration_mins,
+                openclaw_timeout=timeout_sec,
+                skip_openclaw=jobs.get(job_id, {}).get("skip_openclaw", False),
+                use_local_videos=req.use_local_videos or False,
+                cancel_check=cancel_check,
+                extend_check=extend_check,
+                get_skip_filename=get_skip_filename,
+                local_digital_human=req.local_digital_human or None,
+                local_cartoon_head=req.local_cartoon_head or None,
+                local_recording=req.local_recording or None,
+            )
             with jobs_lock:
-                jobs[job_id]["artifacts"]["openclaw_reply"] = reply[:500] if reply else ""
-                jobs[job_id]["steps"]["openclaw"] = "done"
-            _log(job_id, f"OpenClaw 回复：{reply[:200] if reply else '（无）'}...", "done")
-            jobs[job_id]["status"] = "done"
+                jobs[job_id]["artifacts"].update({
+                    k: v for k, v in artifacts.items()
+                    if v is not None and k not in ("shots",)
+                })
+                if "shots" in artifacts:
+                    jobs[job_id]["artifacts"]["shots"] = artifacts["shots"]
+                jobs[job_id]["steps"] = {
+                    "script": "done", "audio": "done", "storyboard": "done",
+                    "openclaw": "done", "pipeline": "done" if artifacts.get("final_video") else "skipped",
+                }
+                jobs[job_id]["status"] = "done"
         except Exception as e:
             _log(job_id, f"[错误] {e}", "error")
-            jobs[job_id]["status"] = "error"
+            with jobs_lock:
+                jobs[job_id]["status"] = "error"
 
     threading.Thread(target=run, daemon=True).start()
     return {"job_id": job_id}
@@ -172,12 +182,22 @@ def create_job(req: CreateJobRequest):
 
 @app.post("/api/jobs/{job_id}/skip-openclaw")
 def skip_openclaw(job_id: str, filename: Optional[str] = Query(None)):
+    """跳过等待：使用最新视频（filename 空）或指定文件名继续。"""
     with jobs_lock:
         if job_id not in jobs:
             raise HTTPException(404, "job not found")
         jobs[job_id]["skip_openclaw"] = True
-        if filename:
-            jobs[job_id]["openclaw_manual_filename"] = filename
+        jobs[job_id]["openclaw_manual_filename"] = filename if filename and filename.strip() else None
+    return {"ok": True}
+
+
+@app.post("/api/jobs/{job_id}/extend-openclaw")
+def extend_openclaw(job_id: str):
+    """延长等待：再等待 60 秒。"""
+    with jobs_lock:
+        if job_id not in jobs:
+            raise HTTPException(404, "job not found")
+        jobs[job_id]["extend_openclaw"] = True
     return {"ok": True}
 
 
@@ -203,7 +223,7 @@ def list_jobs():
                 "id": jid,
                 "status": j.get("status", "pending"),
                 "created_at": j.get("created_at", ""),
-                "prompt": j.get("script", "")[:80],
+                "prompt": j.get("prompt", "")[:80],
             })
         out.sort(key=lambda x: x["created_at"] or "", reverse=True)
         return out
@@ -289,10 +309,25 @@ def list_local_videos(source: Optional[str] = Query(None)):
             pass
         return files[:50]
 
+    def scan_digital_human_folders() -> list:
+        """数字人：列出子文件夹（每个文件夹内含多段视频，运行时合成）。"""
+        p = Path(VIDEO_DIGITAL_HUMAN_DIR)
+        base = (ROOT / p).resolve() if not str(p).startswith("/") else Path(p)
+        if not base.exists() or not base.is_dir():
+            return []
+        folders = []
+        try:
+            for f in sorted(base.iterdir()):
+                if f.is_dir() and any(s.suffix.lower() in VIDEO_EXT for s in f.iterdir() if s.is_file()):
+                    folders.append(f.name)
+        except OSError:
+            pass
+        return folders
+
     if not source or source == "video_shoot":
         result["video_shoot"] = scan_dir("video_shoot")
     if not source or source == "digital_human":
-        result["digital_human"] = scan_dir("digital_human")
+        result["digital_human"] = scan_digital_human_folders()
     if not source or source == "cartoon_head":
         result["cartoon_head"] = scan_dir("cartoon_head")
     return result
@@ -300,7 +335,7 @@ def list_local_videos(source: Optional[str] = Query(None)):
 
 @app.get("/api/local-video-defaults")
 def get_local_video_defaults():
-    """返回数字人、卡通、录屏的默认路径（用于 UI 占位及用户未填写时使用）。"""
+    """返回数字人、卡通、录屏的默认路径。数字人为子文件夹名（如 jirian），合成该文件夹内视频。"""
     return {
         "digital_human": f"{VIDEO_DIGITAL_HUMAN_DIR}/{VIDEO_DIGITAL_HUMAN_DEFAULT}",
         "cartoon_head": f"{VIDEO_CARTOON_HEAD_DIR}/{VIDEO_CARTOON_HEAD_DEFAULT}",
@@ -394,12 +429,23 @@ def create_recording_job(req: CreateRecordingJobRequest):
                 _log_recording(job_id, "错误：缺少提示词")
                 recording_jobs[job_id]["status"] = "error"
                 return
-            _log_recording(job_id, "发送给 OpenClaw...")
+            _log_recording(job_id, "AI 正在将提示词转换为结构化录屏指令...")
+            try:
+                instruction = prompt_to_recording_instruction(
+                    req.prompt,
+                    output_filename=req.output_filename or "recording.mp4",
+                )
+                _log_recording(job_id, "指令已生成，发送给 OpenClaw...")
+            except Exception as e:
+                _log_recording(job_id, f"AI 转换失败: {e}")
+                recording_jobs[job_id]["status"] = "error"
+                return
             wait_oc = req.wait_openclaw if req.wait_openclaw is not None else True
-            reply = send_as_user_and_wait_reply(req.prompt, timeout=OPENCLAW_REPLY_TIMEOUT, wait=wait_oc)
+            reply = send_as_user_and_wait_reply(instruction, timeout=OPENCLAW_REPLY_TIMEOUT, wait=wait_oc)
             _log_recording(job_id, f"回复：{reply[:200] if reply else '（无）'}...")
             with jobs_lock:
                 recording_jobs[job_id]["openclaw_reply"] = reply
+                recording_jobs[job_id]["instruction"] = instruction
                 recording_jobs[job_id]["status"] = "done"
         except Exception as e:
             _log_recording(job_id, f"错误：{e}")
@@ -440,6 +486,7 @@ def get_recording_job(job_id: str):
         "created_at": data.get("created_at", ""),
         "prompt": data.get("prompt", ""),
         "output_filename": data.get("output_filename", ""),
+        "instruction": data.get("instruction"),
         "openclaw_reply": data.get("openclaw_reply"),
         "logs": [
             {"ts": e.get("ts"), "text": e.get("text", ""), "step": "info"}
