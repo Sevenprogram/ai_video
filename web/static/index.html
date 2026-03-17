@@ -1,110 +1,489 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>AI Video - 主流程</title>
-  <style>
-    * { box-sizing: border-box; }
-    body { font-family: system-ui, sans-serif; max-width: 800px; margin: 0 auto; padding: 24px; }
-    h1 { margin-bottom: 24px; }
-    label { display: block; margin-bottom: 8px; font-weight: 500; }
-    textarea { width: 100%; min-height: 160px; padding: 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
-    button { padding: 10px 20px; margin-right: 8px; margin-top: 8px; cursor: pointer; background: #2563eb; color: white; border: none; border-radius: 6px; }
-    button:hover { background: #1d4ed8; }
-    button:disabled { opacity: 0.6; cursor: not-allowed; }
-    button.secondary { background: #6b7280; }
-    button.secondary:hover { background: #4b5563; }
-    #log { background: #1e293b; color: #e2e8f0; padding: 16px; border-radius: 8px; font-family: monospace; font-size: 13px; white-space: pre-wrap; max-height: 400px; overflow-y: auto; margin-top: 16px; }
-    .skip-btns { margin-top: 12px; }
-    .skip-btns.hidden { display: none; }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI 视频工作流仪表盘</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet" />
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0b0e14; --surface: #131720; --border: #1e2535;
+  --text: #c9d1e0; --muted: #4a5568; --accent: #3ecf8e; --accent2: #5b7fff;
+  --warn: #f6c90e; --err: #ff5c5c;
+  --step-script: #5b7fff; --step-storyboard: #f6c90e; --step-openclaw: #3ecf8e;
+  --radius: 10px; --mono: 'Space Mono', monospace; --sans: 'DM Sans', sans-serif;
+}
+html, body { height: 100%; }
+body {
+  background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px;
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.app {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  grid-template-rows: 52px 1fr;
+  height: 100vh;
+}
+header {
+  grid-column: 1 / -1;
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; padding: 0 20px; gap: 12px;
+}
+header .logo { font-family: var(--mono); font-size: 13px; color: var(--accent); letter-spacing: 0.04em; }
+header .subtitle { font-size: 12px; color: var(--muted); }
+header .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
+.left-panel {
+  background: var(--surface); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.section-title {
+  font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
+  padding: 14px 16px 8px;
+}
+.prompt-box { padding: 0 12px 12px; display: flex; flex-direction: column; gap: 8px; }
+textarea#prompt {
+  background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
+  color: var(--text); font-family: var(--mono); font-size: 11px; line-height: 1.6;
+  padding: 10px 12px; resize: none; height: 160px; outline: none;
+}
+textarea#prompt:focus { border-color: var(--accent2); }
+.duration-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 2px; }
+.duration-input {
+  width: 58px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+  color: var(--text); font-family: var(--mono); font-size: 12px; text-align: center; padding: 3px 6px;
+  -moz-appearance: textfield;
+}
+.duration-input::-webkit-outer-spin-button, .duration-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+.checkbox-row { display: flex; align-items: center; }
+.checkbox-label { font-size: 11px; color: var(--text); display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.checkbox-label input { width: 14px; height: 14px; accent-color: var(--accent); }
+.local-videos-row { display: flex; flex-direction: column; gap: 6px; padding: 8px 0; }
+.local-video-select {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+  color: var(--text); font-family: var(--mono); font-size: 11px; padding: 6px 10px;
+  width: 100%;
+}
+.btn-run {
+  background: var(--accent); color: #000; border: none; border-radius: var(--radius);
+  font-size: 13px; font-weight: 700; padding: 10px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+}
+.btn-run:hover { opacity: .88; }
+.btn-run:disabled { opacity: .35; cursor: not-allowed; }
+.skip-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.skip-row.hidden { display: none; }
+.btn-skip { background: var(--border); color: var(--text); border: none; border-radius: 6px; padding: 6px 12px; font-size: 11px; cursor: pointer; }
+.btn-skip:hover { background: #2a3142; }
+.history-list { flex: 1; overflow-y: auto; padding: 0 8px 12px; }
+.history-item {
+  padding: 9px 10px; border-radius: 8px; cursor: pointer; border: 1px solid transparent; margin-bottom: 4px;
+}
+.history-item:hover { background: rgba(255,255,255,.04); }
+.history-item.active { background: rgba(94,135,255,.1); border-color: var(--accent2); }
+.status-badge { font-size: 10px; padding: 2px 7px; border-radius: 20px; }
+.status-badge.pending { background: rgba(74,85,104,.3); color: var(--muted); }
+.status-badge.running { background: rgba(91,127,255,.18); color: var(--accent2); }
+.status-badge.done { background: rgba(62,207,142,.15); color: var(--accent); }
+.status-badge.error { background: rgba(255,92,92,.15); color: var(--err); }
+.right-panel { display: flex; flex-direction: column; overflow: hidden; padding: 16px; gap: 14px; }
+.steps-bar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.step-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 12px 14px; display: flex; align-items: center; gap: 10px; position: relative;
+}
+.step-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: var(--step-color, var(--border)); transform: scaleX(0); transition: transform .4s;
+}
+.step-card.running::before { transform: scaleX(1); animation: progress-bar 1.5s ease-in-out infinite alternate; }
+.step-card.done::before { transform: scaleX(1); }
+@keyframes progress-bar { from { transform: scaleX(0.1); } to { transform: scaleX(1); } }
+.step-card[data-step="script"] { --step-color: var(--step-script); }
+.step-card[data-step="storyboard"] { --step-color: var(--step-storyboard); }
+.step-card[data-step="openclaw"] { --step-color: var(--step-openclaw); }
+.body-row { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; min-height: 0; }
+.panel {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.panel-header {
+  padding: 10px 14px; border-bottom: 1px solid var(--border);
+  font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted);
+}
+.log-body { flex: 1; overflow-y: auto; padding: 10px 14px; font-family: var(--mono); font-size: 11px; line-height: 1.7; }
+.log-line { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 2px; }
+.log-ts { color: var(--muted); flex-shrink: 0; font-size: 10px; }
+.log-step-tag { font-size: 9px; padding: 1px 5px; border-radius: 3px; flex-shrink: 0; }
+.log-msg { color: var(--text); word-break: break-all; }
+.log-line.step-storyboard .log-step-tag { background: rgba(246,201,14,.15); color: var(--step-storyboard); }
+.log-line.step-openclaw .log-step-tag { background: rgba(62,207,142,.15); color: var(--step-openclaw); }
+.log-line.step-done .log-step-tag { background: rgba(62,207,142,.15); color: var(--accent); }
+.log-line.step-error .log-step-tag { background: rgba(255,92,92,.15); color: var(--err); }
+.log-line.step-error .log-msg { color: var(--err); }
+.results-body { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.result-block { display: flex; flex-direction: column; gap: 6px; }
+.result-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.script-preview {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px;
+  font-family: var(--mono); font-size: 11px; line-height: 1.7; white-space: pre-wrap; max-height: 140px; overflow-y: auto;
+}
+.recording-preview {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px;
+  font-family: var(--mono); font-size: 11px; line-height: 1.7; white-space: pre-wrap; max-height: 140px; overflow-y: auto;
+}
+.openclaw-reply {
+  background: rgba(62,207,142,.08); border: 1px solid rgba(62,207,142,.25); border-radius: 6px;
+  padding: 10px 12px; font-size: 12px; color: var(--accent);
+}
+.empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--muted); gap: 8px; padding: 40px; text-align: center; }
+.spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid rgba(255,255,255,.15); border-top-color: var(--accent2); border-radius: 50%; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+a.download-link { font-size: 11px; color: var(--accent2); text-decoration: none; }
+a.download-link:hover { text-decoration: underline; }
+</style>
 </head>
 <body>
-  <h1>AI Video - 主流程</h1>
-  <label>文稿（script）</label>
-  <textarea id="script" placeholder="输入视频文稿..."></textarea>
-  <button id="start">开始</button>
-  <div class="skip-btns hidden" id="skipBtns">
-    <button class="secondary" id="skipLatest">使用最新视频继续</button>
-    <button class="secondary" id="skipFile">使用指定文件继续</button>
-  </div>
-  <div id="log"></div>
+<div class="app">
+  <header>
+    <div class="dot"></div>
+    <span class="logo">AI VIDEO WORKFLOW</span>
+    <span class="subtitle">仪表盘 · 文稿→分镜→录屏指令→OpenClaw</span>
+    <a href="/recording" style="margin-left:auto;color:var(--muted);font-size:12px;text-decoration:none">录屏先行 →</a>
+  </header>
+  <aside class="left-panel">
+    <div class="section-title">文稿输入</div>
+    <div class="prompt-box">
+      <textarea id="prompt" placeholder="输入视频文稿，将自动生成分镜和录屏指令…"></textarea>
+      <div class="duration-row">
+        <span style="font-size:11px">文稿目标时长（分钟）</span>
+        <input type="number" id="target-duration" class="duration-input" value="3" min="1" max="30" />
+      </div>
+      <div class="duration-row">
+        <span style="font-size:11px">OpenClaw 超时（秒）</span>
+        <input type="number" id="openclaw-timeout" class="duration-input" value="600" min="10" max="3600" />
+      </div>
+      <div class="checkbox-row">
+        <label class="checkbox-label"><input type="checkbox" id="wait-openclaw" checked /> 等待 OpenClaw 回复</label>
+      </div>
+      <div class="checkbox-row">
+        <label class="checkbox-label"><input type="checkbox" id="use-local-videos" /> 使用本地视频（跳过 OpenClaw）</label>
+      </div>
+      <div class="local-videos-row">
+        <label style="font-size:10px;color:var(--muted)">数字人视频</label>
+        <select id="local-digital-human" class="local-video-select"></select>
+        <label style="font-size:10px;color:var(--muted)">卡通头部视频</label>
+        <select id="local-cartoon-head" class="local-video-select"></select>
+        <label style="font-size:10px;color:var(--muted)">录屏视频</label>
+        <select id="local-recording" class="local-video-select"></select>
+      </div>
+      <div class="skip-row hidden" id="skipRow">
+        <button class="btn-skip" id="skipLatest">使用最新视频继续</button>
+        <button class="btn-skip" id="skipFile">使用指定文件继续</button>
+      </div>
+      <button class="btn-run" id="btn-run">
+        <span id="btn-icon">▶</span>
+        <span id="btn-text">开始生成</span>
+      </button>
+    </div>
+    <div class="section-title">历史任务</div>
+    <div class="history-list" id="history-list"></div>
+  </aside>
+  <main class="right-panel">
+    <div class="steps-bar">
+      <div class="step-card" data-step="script" id="step-script">
+        <div class="step-icon">📝</div>
+        <div class="step-info">
+          <div class="step-name">文稿</div>
+          <div class="step-desc" id="step-script-desc">等待开始</div>
+        </div>
+      </div>
+      <div class="step-card" data-step="storyboard" id="step-storyboard">
+        <div class="step-icon">🎬</div>
+        <div class="step-info">
+          <div class="step-name">分镜生成</div>
+          <div class="step-desc" id="step-storyboard-desc">等待开始</div>
+        </div>
+      </div>
+      <div class="step-card" data-step="openclaw" id="step-openclaw">
+        <div class="step-icon">🖥</div>
+        <div class="step-info">
+          <div class="step-name">OpenClaw</div>
+          <div class="step-desc" id="step-openclaw-desc">等待开始</div>
+        </div>
+      </div>
+    </div>
+    <div class="body-row">
+      <div class="panel">
+        <div class="panel-header">
+          <span>实时日志</span>
+          <span id="log-spinner" style="display:none"><span class="spinner"></span></span>
+        </div>
+        <div class="log-body" id="log-body">
+          <div class="empty-state">
+            <div style="font-size:36px;opacity:.3">⏳</div>
+            <p>启动工作流后，<br>实时日志将在这里显示。</p>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header">产物预览</div>
+        <div class="results-body" id="results-body">
+          <div class="empty-state">
+            <div style="font-size:36px;opacity:.3">🗂</div>
+            <p>工作流完成后，<br>生成的文稿、分镜、录屏指令<br>将在这里展示。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+<script>
+let activeJobId = null;
+let evtSource = null;
 
-  <script>
-    const scriptEl = document.getElementById('script');
-    const startBtn = document.getElementById('start');
-    const logEl = document.getElementById('log');
-    const skipBtns = document.getElementById('skipBtns');
-    const skipLatestBtn = document.getElementById('skipLatest');
-    const skipFileBtn = document.getElementById('skipFile');
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
 
-    let jobId = null;
-    let evtSource = null;
 
-    function log(msg) {
-      logEl.textContent += msg + '\n';
-      logEl.scrollTop = logEl.scrollHeight;
+async function loadLocalVideoSelects() {
+  try {
+    const [videosRes, defaultsRes] = await Promise.all([fetch('/api/local-videos'), fetch('/api/local-video-defaults')]);
+    if (!videosRes.ok || !defaultsRes.ok) return;
+    const data = await videosRes.json();
+    const defaults = await defaultsRes.json();
+    const defaultFiles = {
+      digital_human: (defaults.digital_human || '').split('/').pop() || 'idle_hands_open.mp4',
+      cartoon_head: (defaults.cartoon_head || '').split('/').pop() || 'pig.mp4',
+      video_shoot: (defaults.recording || '').split('/').pop() || 'template.mp4',
+    };
+    const config = [
+      { id: 'local-digital-human', key: 'digital_human', df: defaultFiles.digital_human },
+      { id: 'local-cartoon-head', key: 'cartoon_head', df: defaultFiles.cartoon_head },
+      { id: 'local-recording', key: 'video_shoot', df: defaultFiles.video_shoot },
+    ];
+    config.forEach(({ id, key, df }) => {
+      const sel = document.getElementById(id);
+      if (!sel) return;
+      const files = data[key] || [];
+      sel.innerHTML = '<option value="">-- 不选择 --</option>' + files.map(f => '<option value="' + esc(f) + '"' + (f === df ? ' selected' : '') + '>' + esc(f) + '</option>').join('');
+    });
+  } catch (_) {}
+}
+
+async function startJob() {
+  const script = document.getElementById('prompt').value.trim();
+  if (!script) { alert('请输入文稿'); return; }
+  const timeout = parseInt(document.getElementById('openclaw-timeout').value, 10) || 600;
+  const targetDuration = parseInt(document.getElementById('target-duration').value, 10) || 3;
+  const waitOpenclaw = document.getElementById('wait-openclaw').checked;
+  const useLocalVideos = document.getElementById('use-local-videos').checked;
+  const localDigitalHuman = document.getElementById('local-digital-human').value.trim() || null;
+  const localCartoonHead = document.getElementById('local-cartoon-head').value.trim() || null;
+  const localRecording = document.getElementById('local-recording').value.trim() || null;
+  document.getElementById('btn-run').disabled = true;
+  document.getElementById('btn-icon').innerHTML = '<span class="spinner" style="border-top-color:#000"></span>';
+  document.getElementById('btn-text').textContent = '生成中…';
+  resetUI();
+  try {
+    const res = await fetch('/api/jobs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        script,
+        openclaw_timeout: timeout,
+        target_duration_minutes: targetDuration,
+        wait_openclaw: waitOpenclaw,
+        use_local_videos: useLocalVideos,
+        local_digital_human: localDigitalHuman,
+        local_cartoon_head: localCartoonHead,
+        local_recording: localRecording,
+      })
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const { job_id } = await res.json();
+    selectJob(job_id);
+  } catch (e) {
+    appendLog({ step: 'error', msg: '创建任务失败: ' + e.message });
+    document.getElementById('btn-run').disabled = false;
+    document.getElementById('btn-icon').textContent = '▶';
+    document.getElementById('btn-text').textContent = '开始生成';
+  }
+}
+
+async function selectJob(jobId) {
+  if (evtSource) { evtSource.close(); evtSource = null; }
+  activeJobId = jobId;
+  document.getElementById('skipRow').classList.add('hidden');
+  document.getElementById('log-spinner').style.display = '';
+  try {
+    const res = await fetch('/api/jobs/' + jobId);
+    if (!res.ok) return;
+    const job = await res.json();
+    ['script','storyboard','openclaw'].forEach(s => setStepState(s, job.steps?.[s] || 'pending'));
+    (job.logs || []).forEach(e => appendLog({ step: e.step || 'info', msg: e.text || e.msg }));
+    if (job.status === 'done') {
+      renderArtifacts(job);
+      document.getElementById('btn-run').disabled = false;
+      document.getElementById('btn-icon').textContent = '▶';
+      document.getElementById('btn-text').textContent = '开始生成';
+      document.getElementById('log-spinner').style.display = 'none';
+    } else if (job.status === 'error') {
+      document.getElementById('btn-run').disabled = false;
+      document.getElementById('btn-icon').textContent = '▶';
+      document.getElementById('btn-text').textContent = '开始生成';
+      document.getElementById('log-spinner').style.display = 'none';
+    } else {
+      subscribeSSE(jobId);
     }
+  } catch (_) {}
+  refreshHistory();
+}
 
-    function showSkipBtns(show) {
-      skipBtns.classList.toggle('hidden', !show);
+function subscribeSSE(jobId) {
+  evtSource = new EventSource('/api/jobs/' + jobId + '/logs');
+  evtSource.onmessage = (e) => {
+    const d = JSON.parse(e.data);
+    appendLog({ step: d.step || 'info', msg: d.msg || d.text });
+    if (d.step === 'storyboard') {
+      setStepState('storyboard', 'running');
+      const el = document.getElementById('step-storyboard-desc');
+      if (el) el.textContent = (d.msg || '').slice(0, 35);
     }
-
-    async function start() {
-      const script = scriptEl.value.trim();
-      if (!script) {
-        alert('请输入文稿');
-        return;
-      }
-      startBtn.disabled = true;
-      logEl.textContent = '';
-      try {
-        const r = await fetch('/api/jobs', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ script })
-        });
-        if (!r.ok) throw new Error(await r.text());
-        const data = await r.json();
-        jobId = data.job_id;
-        log(`任务已创建: ${jobId}`);
-        showSkipBtns(true);
-        evtSource = new EventSource(`/api/jobs/${jobId}/logs`);
-        evtSource.onmessage = e => {
-          try {
-            const d = JSON.parse(e.data);
-            log(d.text || '');
-            if (/等待|OpenClaw/.test(d.text || '')) showSkipBtns(true);
-          } catch (_) {}
-        };
-        evtSource.onerror = () => { evtSource?.close(); };
-      } catch (e) {
-        log('错误: ' + e.message);
-      } finally {
-        startBtn.disabled = false;
-      }
+    if (d.step === 'openclaw') {
+      setStepState('openclaw', 'running');
+      document.getElementById('skipRow').classList.remove('hidden');
     }
-
-    async function skip(mode) {
-      if (!jobId) return;
-      let url = `/api/jobs/${jobId}/skip-openclaw`;
-      if (mode === 'file') {
-        const fn = prompt('输入文件名：');
-        if (fn == null) return;
-        url += '?filename=' + encodeURIComponent(fn);
-      }
-      try {
-        await fetch(url, { method: 'POST' });
-        log(mode === 'file' ? '已选择指定文件继续' : '已选择使用最新视频继续');
-      } catch (e) {
-        log('跳过失败: ' + e.message);
-      }
+    if (/完成|OpenClaw 回复/.test(d.msg || '')) {
+      setStepState('openclaw', 'done');
+      setStepState('storyboard', 'done');
+      setStepState('script', 'done');
     }
+    if (d.step === 'error') {
+      evtSource.close();
+      evtSource = null;
+      document.getElementById('btn-run').disabled = false;
+      document.getElementById('btn-icon').textContent = '▶';
+      document.getElementById('btn-text').textContent = '开始生成';
+      document.getElementById('log-spinner').style.display = 'none';
+    }
+  };
+  evtSource.onerror = () => {
+    evtSource.close();
+    evtSource = null;
+    document.getElementById('btn-run').disabled = false;
+    document.getElementById('btn-icon').textContent = '▶';
+    document.getElementById('btn-text').textContent = '开始生成';
+    document.getElementById('log-spinner').style.display = 'none';
+  };
+}
 
-    startBtn.onclick = start;
-    skipLatestBtn.onclick = () => skip('latest');
-    skipFileBtn.onclick = () => skip('file');
-  </script>
+function appendLog(entry) {
+  const body = document.getElementById('log-body');
+  const empty = body.querySelector('.empty-state');
+  if (empty) empty.remove();
+  const ts = entry.ts ? new Date(entry.ts).toLocaleTimeString('zh-CN', { hour12: false }) : '';
+  const div = document.createElement('div');
+  div.className = 'log-line step-' + (entry.step || 'info');
+  div.innerHTML = '<span class="log-ts">' + ts + '</span><span class="log-step-tag">' + (entry.step || 'INFO').toUpperCase() + '</span><span class="log-msg">' + esc(entry.msg || '') + '</span>';
+  body.appendChild(div);
+  body.scrollTop = body.scrollHeight;
+}
+
+function setStepState(step, status) {
+  const card = document.getElementById('step-' + step);
+  if (!card) return;
+  card.classList.remove('pending','running','done','error');
+  card.classList.add(status);
+  const icon = card.querySelector('.step-icon');
+  if (icon) icon.textContent = { pending: '○', running: '⚙️', done: '✅', error: '❌' }[status] || '○';
+}
+
+function renderArtifacts(job) {
+  const body = document.getElementById('results-body');
+  body.innerHTML = '';
+  const a = job.artifacts || {};
+  const folder = a.folder;
+  if (!folder) {
+    body.innerHTML = '<div class="empty-state"><p>暂无产物</p></div>';
+    return;
+  }
+  if (a.script) {
+    const block = document.createElement('div');
+    block.className = 'result-block';
+    block.innerHTML = '<div class="result-label">📝 口播文稿</div><div class="script-preview">' + esc((job.artifacts?.script === true ? '已保存' : a.script) || '') + '</div><a class="download-link" href="/api/files/' + folder + '/script.txt" download>下载 script.txt</a>';
+    body.appendChild(block);
+  }
+  if (a.storyboard && a.shots) {
+    const shots = a.shots;
+    const rows = shots.map(s => '<tr><td>' + (s.id || '-') + '</td><td>' + (s.start_sec || 0) + 's</td><td>' + (s.end_sec || 0) + 's</td><td>' + esc(s.source || '-') + '</td><td title="' + esc(s.url||'') + '">' + esc((s.url||'').slice(0,40)) + '</td></tr>').join('');
+    const block = document.createElement('div');
+    block.className = 'result-block';
+    block.innerHTML = '<div class="result-label">🎬 分镜表 (' + shots.length + ' 个)</div><div class="script-preview" style="max-height:120px;overflow:auto"><table style="width:100%;font-size:10px;border-collapse:collapse"><tr><th>#</th><th>开始</th><th>结束</th><th>来源</th><th>URL</th></tr>' + rows + '</table></div><a class="download-link" href="/api/files/' + folder + '/storyboard.txt" download>下载 storyboard.txt</a>';
+    body.appendChild(block);
+  }
+  if (a.recording_task) {
+    fetch('/api/files/' + folder + '/recording_task.txt').then(r => r.text()).then(text => {
+      const block = document.createElement('div');
+      block.className = 'result-block';
+      let html = '<div class="result-label">🖥 录屏指令</div><div class="script-preview">' + esc(text).slice(0, 800) + '</div>';
+      if (a.openclaw_reply) html += '<div class="openclaw-reply">✅ OpenClaw 回复：' + esc(a.openclaw_reply) + '</div>';
+      html += '<a class="download-link" href="/api/files/' + folder + '/recording_task.txt" download>下载 recording_task.txt</a>';
+      block.innerHTML = html;
+      body.appendChild(block);
+    });
+  }
+}
+
+async function refreshHistory() {
+  try {
+    const res = await fetch('/api/jobs');
+    if (!res.ok) return;
+    const jobs = await res.json();
+    const list = document.getElementById('history-list');
+    list.innerHTML = '';
+    if (!jobs.length) {
+      list.innerHTML = '<div style="padding:10px 12px;color:var(--muted);font-size:11px">暂无任务</div>';
+      return;
+    }
+    jobs.forEach(job => {
+      const el = document.createElement('div');
+      el.className = 'history-item' + (job.id === activeJobId ? ' active' : '');
+      el.onclick = () => selectJob(job.id);
+      const t = new Date(job.created_at).toLocaleTimeString('zh-CN', { hour12: false, hour: '2-digit', minute: '2-digit' });
+      el.innerHTML = '<div style="margin-bottom:3px"><span class="status-badge ' + job.status + '">' + { pending: '待运行', running: '运行中', done: '完成', error: '失败' }[job.status] + '</span> <span style="font-size:10px;color:var(--muted);font-family:var(--mono)">' + t + '</span></div><div style="font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(job.prompt || '') + '</div>';
+      list.appendChild(el);
+    });
+  } catch (_) {}
+}
+
+function resetUI() {
+  document.getElementById('log-body').innerHTML = '<div class="empty-state"><div style="font-size:36px;opacity:.3">⏳</div><p>实时日志将在这里显示。</p></div>';
+  document.getElementById('results-body').innerHTML = '<div class="empty-state"><div style="font-size:36px;opacity:.3">🗂</div><p>工作流完成后，产物将在这里展示。</p></div>';
+  ['script','storyboard','openclaw'].forEach(s => {
+    setStepState(s, 'pending');
+    const desc = document.getElementById('step-' + s + '-desc');
+    if (desc) desc.textContent = '等待开始';
+  });
+}
+
+document.getElementById('btn-run').onclick = startJob;
+document.getElementById('skipLatest').onclick = async () => {
+  if (!activeJobId) return;
+  await fetch('/api/jobs/' + activeJobId + '/skip-openclaw', { method: 'POST' });
+};
+document.getElementById('skipFile').onclick = async () => {
+  if (!activeJobId) return;
+  const fn = prompt('输入文件名（如 xxx.mp4）：');
+  if (fn == null) return;
+  await fetch('/api/jobs/' + activeJobId + '/skip-openclaw?filename=' + encodeURIComponent(fn), { method: 'POST' });
+};
+
+document.addEventListener('DOMContentLoaded', () => { loadLocalVideoSelects(); refreshHistory(); setInterval(refreshHistory, 5000); });
+</script>
 </body>
 </html>

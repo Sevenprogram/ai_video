@@ -7,16 +7,18 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from config import VIDEO_DURATION_MINUTES
+from typing import Optional
 
 
 # ──────────────────────────────────────────
 # 分镜提示词
 # ──────────────────────────────────────────
-def build_storyboard_prompt(script: str) -> str:
+def build_storyboard_prompt(script: str, minutes: Optional[int] = None) -> str:
     """
     根据文稿生成分镜提示词，供 LLM 产出 JSON 格式的分镜列表。
+    minutes: 目标视频时长（分钟），不传则用 config.VIDEO_DURATION_MINUTES。
     """
-    minutes = VIDEO_DURATION_MINUTES
+    minutes = minutes if minutes is not None else VIDEO_DURATION_MINUTES
     return f"""请根据以下视频文稿，生成浏览器录屏分镜的 JSON 列表。每个分镜需要指定：
 - id: 序号（从 1 开始）
 - start_sec, end_sec, duration_sec: 时间轴

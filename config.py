@@ -75,3 +75,13 @@ OPENCLAW_REPLY_TIMEOUT: int = 1500  # 等待 OpenClaw 回复的最长秒数
 HEYGEN_API_KEY: str = "sk_V2_hgu_kPJmzdKZSV0_iXlpj2jQT1Q0hONv3lBh3hMIrGyUKprC"
 HEYGEN_AVATAR_ID: str = "a761ce70b43447ab8383684d98afcf22"
 HEYGEN_VOICE_ID: str = "16b83de110ba45ec9537eaf28be7e448"
+
+# ===== 本地视频目录与默认文件（用于选择数字人、卡通头部、录屏视频）=====
+# 目录相对于项目根目录，或绝对路径
+VIDEO_SHOOT_DIR: str = "video_module/video_shoot"       # 录屏视频保存目录
+VIDEO_DIGITAL_HUMAN_DIR: str = "/root/project/ai_video/video_module/action_clips"  # 数字人/口播视频目录
+VIDEO_CARTOON_HEAD_DIR: str = "video_module/action_clips"  # 卡通头部视频目录
+# 默认文件名（用户未填写时使用，相对于上述目录）
+VIDEO_DIGITAL_HUMAN_DEFAULT: str = "idle_hands_open.mp4"   # 数字人默认
+VIDEO_CARTOON_HEAD_DEFAULT: str = "pig.mp4"                # 卡通头部默认
+VIDEO_SHOOT_DEFAULT: str = "template.mp4"                  # 录屏默认（video_shoot 中常用名）

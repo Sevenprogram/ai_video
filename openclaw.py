@@ -435,12 +435,13 @@ def send_as_user_and_wait_reply(
     *,
     chat_id: str | None = None,
     timeout: float = 120.0,
+    wait: bool = True,
     app_id: str | None = None,
     app_secret: str | None = None,
     cancel_check: Optional[Callable[[], bool]] = None,
 ) -> Optional[str]:
     """
-    以【用户身份】向飞书发指令，然后等待 OpenClaw 的回复。
+    以【用户身份】向飞书发指令。当 wait=True 时等待 OpenClaw 回复；wait=False 则仅发送不等待。
     当 OPENCLAW_USE_P2P=True 时，发到机器人私聊；否则发到群聊。
     """
     _app_id = app_id or FEISHU_APP_ID
@@ -469,6 +470,9 @@ def send_as_user_and_wait_reply(
         user_auth.send_text_as_user(receive_id=target_chat_id, text=command, receive_id_type="chat_id")
         mode = "P2P 私聊" if OPENCLAW_USE_P2P else "群聊"
         print(f"[openclaw] 已以用户身份发送指令到 {mode}：{command!r}")
+        if not wait:
+            print("[openclaw] 不等待回复，已返回。")
+            return None
         print(f"[openclaw] 等待 OpenClaw 回复（最多 {timeout} 秒）...")
         if cancel_check:
             chunk = 10.0
