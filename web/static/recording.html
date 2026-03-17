@@ -101,6 +101,7 @@ textarea#prompt:focus { border-color: var(--accent2); }
 .step-card.done::before { transform: scaleX(1); }
 @keyframes progress-bar { from { transform: scaleX(0.1); } to { transform: scaleX(1); } }
 .step-card[data-step="openclaw"] { --step-color: var(--step-openclaw); }
+.step-card[data-step="pipeline"] { --step-color: #e056fd; }
 .body-row { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; min-height: 0; }
 .panel {
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
@@ -174,12 +175,16 @@ textarea#prompt:focus { border-color: var(--accent2); }
         <select id="local-digital-human" class="local-video-select"></select>
         <label style="font-size:10px;color:var(--muted)">卡通头部视频</label>
         <select id="local-cartoon-head" class="local-video-select"></select>
-        <label style="font-size:10px;color:var(--muted)">录屏视频</label>
+        <label style="font-size:10px;color:var(--muted)">录屏视频 <span id="recording-hint" style="color:var(--accent)"></span></label>
         <select id="local-recording" class="local-video-select"></select>
       </div>
       <div class="skip-row hidden" id="skipRow">
         <button class="btn-skip" id="skipLatest">使用最新视频继续</button>
         <button class="btn-skip" id="skipFile">使用指定文件继续</button>
+        <button class="btn-skip btn-extend" id="extendWait" style="background:rgba(246,201,14,.15);color:var(--warn)">再等 60 秒</button>
+      </div>
+      <div class="skip-row hidden" id="pipelineRow">
+        <button class="btn-run" id="btnPipeline" style="font-size:12px;padding:8px 14px">生成最终视频</button>
       </div>
       <button class="btn-run" id="btn-run">
         <span id="btn-icon">▶</span>
@@ -194,8 +199,15 @@ textarea#prompt:focus { border-color: var(--accent2); }
       <div class="step-card" data-step="openclaw" id="step-openclaw">
         <div class="step-icon">🖥</div>
         <div class="step-info">
-          <div class="step-name">OpenClaw</div>
+          <div class="step-name">1. 录屏</div>
           <div class="step-desc" id="step-openclaw-desc">发送提示词并等待录屏完成</div>
+        </div>
+      </div>
+      <div class="step-card" data-step="pipeline" id="step-pipeline">
+        <div class="step-icon">🎬</div>
+        <div class="step-info">
+          <div class="step-name">2. 视频合成</div>
+          <div class="step-desc" id="step-pipeline-desc">AI 文稿 → TTS → 数字人+卡通头 → 画中画 → 替换音频</div>
         </div>
       </div>
     </div>
@@ -235,9 +247,13 @@ function esc(s) {
 function updateMode() {
   const isLocal = document.getElementById('mode').value === 'local';
   document.getElementById('promptSection').classList.toggle('hidden', isLocal);
+  const rec = document.getElementById('local-recording');
+  const hint = document.getElementById('recording-hint');
+  if (hint) hint.textContent = (!isLocal && rec && rec.value) ? '（将跳过 OpenClaw）' : '';
 }
 
 document.getElementById('mode').addEventListener('change', updateMode);
+document.getElementById('local-recording').addEventListener('change', updateMode);
 
 async function loadLocalVideoSelects() {
   try {
@@ -261,6 +277,7 @@ async function loadLocalVideoSelects() {
       const files = data[key] || [];
       sel.innerHTML = '<option value="">-- 不选择 --</option>' + files.map(f => '<option value="' + esc(f) + '"' + (f === df ? ' selected' : '') + '>' + esc(f) + '</option>').join('');
     });
+    updateMode();
   } catch (_) {}
 }
 
@@ -273,12 +290,12 @@ async function startJob() {
   const localDigitalHuman = document.getElementById('local-digital-human').value.trim() || null;
   const localCartoonHead = document.getElementById('local-cartoon-head').value.trim() || null;
   const localRecording = document.getElementById('local-recording').value.trim() || null;
-  if (!useLocalVideos && !prompt) {
-    alert('请输入提示词');
+  if (!useLocalVideos && !prompt && !localRecording) {
+    alert('请输入提示词，或选择录屏视频');
     return;
   }
-  if (useLocalVideos) {
-    // 本地模式：可选填写视频路径，不调用 OpenClaw
+  if (useLocalVideos || localRecording) {
+    // 本地模式或已选录屏视频：跳过 OpenClaw，直接完成
   }
   document.getElementById('btn-run').disabled = true;
   document.getElementById('btn-icon').innerHTML = '<span class="spinner" style="border-top-color:#000"></span>';
@@ -319,8 +336,9 @@ async function selectJob(jobId) {
     if (!res.ok) return;
     const job = await res.json();
     setStepState('openclaw', job.status === 'done' ? 'done' : job.status === 'error' ? 'error' : job.status === 'running' ? 'running' : 'pending');
+    setStepState('pipeline', (job.pipeline_status === 'done' ? 'done' : job.pipeline_status === 'error' ? 'error' : job.pipeline_status === 'running' ? 'running' : 'pending'));
     (job.logs || []).forEach(e => appendLog({ step: e.step || 'info', msg: e.text || e.msg, ts: e.ts }));
-    if (job.instruction || job.openclaw_reply) {
+    if (job.instruction || job.openclaw_reply || job.final_video) {
       renderResults(job);
     }
     if (job.status === 'done' || job.status === 'error') {
@@ -328,6 +346,9 @@ async function selectJob(jobId) {
       document.getElementById('btn-icon').textContent = '▶';
       document.getElementById('btn-text').textContent = '开始';
       document.getElementById('log-spinner').style.display = 'none';
+      if (job.status === 'done' && job.pipeline_status !== 'running' && job.pipeline_status !== 'done') {
+        document.getElementById('pipelineRow').classList.remove('hidden');
+      }
     } else {
       subscribeSSE(jobId);
     }
@@ -346,7 +367,19 @@ function subscribeSSE(jobId) {
       setStepState('openclaw', 'running');
       document.getElementById('skipRow').classList.remove('hidden');
     }
-    if (/回复：|完成/.test(text)) setStepState('openclaw', 'done');
+    if (/回复：|完成|用户选择|跳过等待|超时/.test(text)) {
+      setStepState('openclaw', 'done');
+      document.getElementById('pipelineRow').classList.remove('hidden');
+      fetch('/api/recording/jobs/' + jobId).then(r => r.ok ? r.json() : null).then(j => { if (j && (j.instruction || j.openclaw_reply)) renderResults(j); });
+    }
+    if (/\[script\]|\[audio\]|\[pipeline\]/.test(text)) {
+      setStepState('pipeline', 'running');
+    }
+    if (/视频合成完成/.test(text)) {
+      setStepState('pipeline', 'done');
+      document.getElementById('pipelineRow').classList.add('hidden');
+      fetch('/api/recording/jobs/' + jobId).then(r => r.ok ? r.json() : null).then(j => { if (j) renderResults(j); });
+    }
     if (/错误/.test(text)) {
       setStepState('openclaw', 'error');
       evtSource.close();
@@ -405,6 +438,13 @@ function renderResults(job) {
     block.innerHTML = '<div class="result-label">OpenClaw 回复</div><div class="openclaw-reply">' + esc(job.openclaw_reply) + '</div>';
     body.appendChild(block);
   }
+  if (job.final_video) {
+    const block = document.createElement('div');
+    block.className = 'result-block';
+    const fn = (job.final_video || '').split('/').pop() || 'final.mp4';
+    block.innerHTML = '<div class="result-label">✅ 最终视频</div><div class="openclaw-reply"><a href="/api/recording/output/' + encodeURIComponent(fn) + '" target="_blank" style="color:var(--accent)">' + esc(fn) + '</a></div>';
+    body.appendChild(block);
+  }
 }
 
 async function refreshHistory() {
@@ -433,6 +473,8 @@ function resetUI() {
   document.getElementById('log-body').innerHTML = '<div class="empty-state"><div style="font-size:36px;opacity:.3">⏳</div><p>实时日志将在这里显示。</p></div>';
   document.getElementById('results-body').innerHTML = '<div class="empty-state"><div style="font-size:36px;opacity:.3">🖥</div><p>任务完成后，OpenClaw 的回复将在这里展示。</p></div>';
   setStepState('openclaw', 'pending');
+  setStepState('pipeline', 'pending');
+  document.getElementById('pipelineRow').classList.add('hidden');
   const desc = document.getElementById('step-openclaw-desc');
   if (desc) desc.textContent = '发送提示词并等待录屏完成';
 }
@@ -453,6 +495,49 @@ document.getElementById('skipFile').onclick = async () => {
     await fetch('/api/recording/jobs/' + activeJobId + '/skip-openclaw?filename=' + encodeURIComponent(fn), { method: 'POST' });
     appendLog({ step: 'info', msg: '✓ 已选择指定文件继续' });
   } catch (e) { appendLog({ step: 'error', msg: '跳过失败: ' + e.message }); }
+};
+document.getElementById('extendWait').onclick = async () => {
+  if (!activeJobId) return;
+  try {
+    await fetch('/api/recording/jobs/' + activeJobId + '/extend-openclaw', { method: 'POST' });
+    appendLog({ step: 'info', msg: '✓ 已延长 60 秒，继续等待 OpenClaw 回复' });
+  } catch (e) { appendLog({ step: 'error', msg: '延长失败: ' + e.message }); }
+};
+document.getElementById('btnPipeline').onclick = async () => {
+  if (!activeJobId) return;
+  const btn = document.getElementById('btnPipeline');
+  btn.disabled = true;
+  btn.textContent = '合成中…';
+  try {
+    const res = await fetch('/api/recording/jobs/' + activeJobId + '/run-pipeline', { method: 'POST' });
+    if (!res.ok) throw new Error(await res.text());
+    appendLog({ step: 'info', msg: '已开始视频合成流程：AI 文稿 → TTS → 数字人+卡通头 → 画中画 → 替换音频' });
+    subscribeSSE(activeJobId);
+    const poll = () => {
+      fetch('/api/recording/jobs/' + activeJobId).then(r => r.ok ? r.json() : null).then(j => {
+        if (!j) return;
+        if (j.pipeline_status === 'done') {
+          setStepState('pipeline', 'done');
+          renderResults(j);
+          btn.disabled = false;
+          btn.textContent = '生成最终视频';
+          document.getElementById('pipelineRow').classList.add('hidden');
+          return;
+        }
+        if (j.pipeline_status === 'error') {
+          btn.disabled = false;
+          btn.textContent = '生成最终视频';
+          return;
+        }
+        setTimeout(poll, 3000);
+      });
+    };
+    setTimeout(poll, 3000);
+  } catch (e) {
+    appendLog({ step: 'error', msg: '启动合成失败: ' + e.message });
+    btn.disabled = false;
+    btn.textContent = '生成最终视频';
+  }
 };
 
 updateMode();

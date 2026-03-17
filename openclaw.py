@@ -23,6 +23,8 @@ from config import (
     FEISHU_APP_SECRET as _CFG_FEISHU_APP_SECRET,
     FEISHU_BASE_URL as _CFG_FEISHU_BASE_URL,
     FEISHU_TARGET_CHAT_ID,
+    FEISHU_VERIFICATION_TOKEN,
+    FEISHU_ENCRYPT_KEY,
 )
 
 OPENCLAW_URL = OPENCLAW_GATEWAY_URL
@@ -280,8 +282,56 @@ class FeishuUserAuth:
         return data
 
 
+# 全局：飞书 Webhook 收到的群消息，供 FeishuReplyWaiter 读取
+# key=chat_id, value=[(create_time_ms, text), ...]
+_feishu_chat_replies: Dict[str, List[tuple]] = {}
+_feishu_replies_lock = threading.Lock()
+
+
+def _on_feishu_message(data: P2ImMessageReceiveV1) -> None:
+    """Webhook 收到群消息时调用，写入全局 store 供 waiter 读取。"""
+    try:
+        event = data.event
+        if not event:
+            return
+        msg = event.message
+        chat_id = getattr(msg, "chat_id", None) or (msg and getattr(msg, "chat_id", ""))
+        if not chat_id:
+            return
+        content = getattr(msg, "content", None) or getattr(msg, "body", None) or ""
+        if isinstance(content, str):
+            try:
+                parsed = json.loads(content) if content else {}
+            except Exception:
+                parsed = {}
+        else:
+            parsed = content if isinstance(content, dict) else {}
+        text = parsed.get("text", "") if isinstance(parsed, dict) else ""
+        if not text:
+            return
+        create_time = getattr(msg, "create_time", None) or 0
+        try:
+            ts_val = int(create_time) if create_time else 0
+        except (TypeError, ValueError):
+            ts_val = 0
+        with _feishu_replies_lock:
+            if chat_id not in _feishu_chat_replies:
+                _feishu_chat_replies[chat_id] = []
+            _feishu_chat_replies[chat_id].append((ts_val, text))
+    except Exception as e:
+        print(f"[openclaw] Webhook 处理消息异常: {e}")
+
+
+def get_feishu_event_handler():
+    """返回用于 webhook 的 EventDispatcherHandler，需在 app 中挂载 POST 路由。"""
+    vtoken = FEISHU_VERIFICATION_TOKEN or ""
+    ekey = FEISHU_ENCRYPT_KEY or ""
+    return lark.EventDispatcherHandler.builder(vtoken, ekey).register_p2_im_message_receive_v1(_on_feishu_message).build()
+
+
 class FeishuReplyWaiter:
-    """监听飞书消息事件，等待指定会话中的新消息（用于收机器人回复）。"""
+    """监听飞书消息事件，等待指定会话中的新消息（用于收机器人回复）。
+    消息来源：飞书 Webhook（/api/feishu/event）需在开发者后台配置。"""
 
     def __init__(
         self,
@@ -296,62 +346,23 @@ class FeishuReplyWaiter:
         self.target_chat_id = target_chat_id
         self.exclude_app_id = exclude_app_id or app_id
         self.base_url = base_url
-        self._replies: List[tuple] = []
-        self._lock = threading.Lock()
         self._running = False
-        self._client: Optional[lark.Client] = None
-        self._dispatcher: Optional[lark.EventDispatcherHandler] = None
-
-    def _handler(self, data: P2ImMessageReceiveV1) -> None:
-        try:
-            event = data.event
-            if not event:
-                return
-            msg = event.message
-            chat_id = getattr(msg, "chat_id", None) or (msg and getattr(msg, "chat_id", ""))
-            if chat_id != self.target_chat_id:
-                return
-            sender = event.sender
-            sender_app_id = getattr(sender, "sender_type", None)
-            if str(getattr(sender, "sender_id", {}).get("open_id", "")) == self.exclude_app_id:
-                return
-            if hasattr(sender, "sender_id") and isinstance(sender.sender_id, dict):
-                if sender.sender_id.get("app_id") == self.exclude_app_id:
-                    return
-            body = getattr(msg, "body", {}) or {}
-            if isinstance(body, str):
-                import json
-                try:
-                    body = json.loads(body) if body else {}
-                except Exception:
-                    body = {}
-            text = body.get("text", "") if isinstance(body, dict) else ""
-            if not text:
-                return
-            create_time = getattr(msg, "create_time", None) or 0
-            with self._lock:
-                self._replies.append((create_time, text))
-        except Exception as e:
-            print(f"[waiter] 处理事件异常: {e}")
 
     def start(self) -> None:
         self._running = True
-        self._client = lark.Client.builder().app_id(self.app_id).app_secret(self.app_secret).build()
-        self._dispatcher = lark.EventDispatcherHandler.builder("", "").register_p2_im_message_receive_v1(self._handler).build()
-        # 使用轮询模拟：实际项目中可用 WebSocket 订阅
-        # 此处简化，不启动独立线程，由 wait() 轮询
 
     def stop(self) -> None:
         self._running = False
 
     def wait(self, sent_at: float, timeout: float) -> Optional[str]:
-        """等待 sent_at 之后的新回复，最多 timeout 秒。"""
+        """等待 sent_at 之后的新回复，最多 timeout 秒。从全局 _feishu_chat_replies 读取（由 Webhook 写入）。"""
         deadline = time.time() + timeout
         while time.time() < deadline:
-            with self._lock:
-                for i, (ts, txt) in enumerate(self._replies):
+            with _feishu_replies_lock:
+                replies = _feishu_chat_replies.get(self.target_chat_id, [])
+                for i, (ts, txt) in enumerate(replies):
                     if ts / 1000 > sent_at:
-                        self._replies.pop(i)
+                        _feishu_chat_replies[self.target_chat_id].pop(i)
                         return txt
             time.sleep(0.5)
         return None

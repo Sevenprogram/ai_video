@@ -134,6 +134,41 @@ Task: 1. 请分析 Ezpro.club 网站的核心功能（重点关注 15-win 挑战
 """
 
 
+SCRIPT_FROM_RECORDING_PROMPT = """你是一位专业短视频旁白撰稿人。请根据以下录屏任务描述，生成一份适合 ElevenLabs 朗读的口播文稿。
+
+【要求】
+- 文稿需用英文撰写，直接适配 ElevenLabs 文本解析，禁止使用 SSML 标签。
+- 在场景转换或需要停顿处使用 ... [pause]
+- 在需要纯动作（无配音）区间使用 [silent] [silent] [silent]
+- 可自然加入 [smacks lips]、[chuckles]、[clears throat] 等情绪词
+- 朗读后总时长应控制在约 {duration_minutes} 分钟内
+- 参考字数：约 {approx_words} 词（英文约 130 词/分钟）
+- 开篇直接进入第一句口播，不要标题或引言
+
+【录屏任务描述】
+{prompt}
+
+【可选：执行者反馈】
+{reply}
+
+请直接输出文稿正文，无需解释。"""
+
+
+def build_script_from_recording_prompt(
+    prompt: str,
+    duration_minutes: int = 3,
+    reply: Optional[str] = None,
+) -> str:
+    """根据录屏提示词（及可选执行反馈）构建文稿生成提示词。"""
+    approx_words = int(duration_minutes * 130)
+    return SCRIPT_FROM_RECORDING_PROMPT.format(
+        duration_minutes=duration_minutes,
+        approx_words=approx_words,
+        prompt=(prompt or "").strip() or "（无描述）",
+        reply=(reply or "").strip() or "（无）",
+    )
+
+
 def build_script_prompt(base_prompt: str, duration_minutes: int) -> str:
     """
     根据目标时长构建文稿生成提示词。
@@ -668,6 +703,122 @@ def _run_pipeline(
     except Exception as e:
         emit("pipeline", f"视频合成失败: {e}")
         return None
+
+
+def run_recording_full_pipeline(
+    prompt: str,
+    recording_path: str,
+    digital_human_folder: str,
+    cartoon_head_path: str,
+    duration_minutes: int = 3,
+    openclaw_reply: Optional[str] = None,
+    output_filename: Optional[str] = None,
+    log_fn: Optional[Callable[[str, str], None]] = None,
+    outputs_base: str = "outputs",
+) -> dict:
+    """
+    录屏先行完整流水线：AI 分析提示词生成口播 → TTS → 数字人切片合成 → 卡通头覆盖 → 画中画 → 替换音频。
+
+    参数：
+        prompt              录屏/视频描述（用于生成口播文稿）
+        recording_path      录屏视频绝对路径（主画面）
+        digital_human_folder 数字人子文件夹名（如 jirian）
+        cartoon_head_path   卡通头部视频路径
+        duration_minutes    目标时长（分钟）
+        openclaw_reply      OpenClaw 执行反馈（可选，用于丰富文稿）
+        output_filename     最终视频文件名（不含路径）
+        log_fn              (step, msg) 回调
+        outputs_base        输出根目录
+
+    返回：
+        dict 含 script_path, audio_path, final_video 等
+    """
+    def emit(step: str, msg: str):
+        if log_fn:
+            log_fn(step, msg)
+        log(msg)
+
+    folder_name = "录屏_" + datetime.now().strftime("%Y%m%d_%H%M")
+    run_dir = os.path.join(outputs_base, folder_name)
+    os.makedirs(run_dir, exist_ok=True)
+    script_path = os.path.join(run_dir, "script.txt")
+    audio_path = os.path.join(run_dir, "audio.mp3")
+    work_dir = os.path.join(run_dir, "video_work")
+    fn = (output_filename or "recording").strip()
+    if not fn.endswith(".mp4"):
+        fn = fn + ".mp4"
+    output_path = os.path.join(run_dir, fn)
+
+    # Step 1：AI 生成口播文稿
+    emit("script", f"根据录屏提示词生成口播文稿（目标 {duration_minutes} 分钟）...")
+    try:
+        script_prompt = build_script_from_recording_prompt(prompt, duration_minutes, openclaw_reply)
+        script = gemini_complete(script_prompt)
+    except Exception as e:
+        emit("error", f"文稿生成失败: {e}")
+        raise
+    with open(script_path, "w", encoding="utf-8") as f:
+        f.write(script)
+    emit("script", f"文稿已保存 ({len(script)} 字符)")
+
+    # Step 2：文字转语音
+    emit("audio", "调用 ElevenLabs 生成音频...")
+    try:
+        text_to_speech_to_file(script, audio_path)
+    except Exception as e:
+        emit("error", f"音频生成失败: {e}")
+        raise
+    emit("audio", "音频已保存")
+
+    # Step 3：获取录屏时长与资源路径
+    try:
+        from synthesis import video_info
+        rec_info = video_info(recording_path)
+        target_duration = rec_info.get("duration", 60.0) or 60.0
+    except Exception:
+        target_duration = float(duration_minutes * 60)
+    emit("pipeline", f"录屏时长: {target_duration:.0f}s")
+
+    clip_paths = _get_clips_from_folder(digital_human_folder, min_clips=3)
+    if not clip_paths:
+        raise RuntimeError(f"未找到数字人视频: {digital_human_folder}")
+
+    p_pig = Path(cartoon_head_path)
+    pig_path = str(p_pig) if p_pig.is_absolute() or "/" in cartoon_head_path else os.path.join(_ACTION_CLIPS_DIR, cartoon_head_path)
+    if not os.path.exists(pig_path):
+        raise RuntimeError(f"未找到卡通头部: {pig_path}")
+
+    emit("pipeline", f"数字人: {digital_human_folder}（{len(clip_paths)} 片段）| 卡通头: {os.path.basename(pig_path)}")
+
+    # Step 4：调用 pipeline.build_video（数字人合成 → 替换音频 → 卡通头覆盖 → 画中画）
+    emit("pipeline", "开始合成：数字人切片 → 卡通头覆盖 → 画中画（录屏右下角）→ 替换音频")
+    try:
+        from pipeline import build_video
+        result = build_video(
+            clip_paths=clip_paths,
+            audio_path=audio_path,
+            pig_path=pig_path,
+            main_path=recording_path,
+            output_path=output_path,
+            target_duration=target_duration,
+            work_dir=work_dir,
+            skip_existing=False,
+        )
+        os.makedirs(VIDEO_OUTPUT_DIR, exist_ok=True)
+        output_copy = os.path.join(VIDEO_OUTPUT_DIR, f"{folder_name}.mp4")
+        shutil.copy2(result, output_copy)
+        emit("pipeline", f"视频合成完成，已保存至 {output_copy}")
+        return {
+            "folder": folder_name,
+            "run_dir": run_dir,
+            "script": script_path,
+            "audio": audio_path,
+            "final_video": result,
+            "output_copy": output_copy,
+        }
+    except Exception as e:
+        emit("error", f"视频合成失败: {e}")
+        raise
 
 
 # --------------------------------------------------------------------------- #

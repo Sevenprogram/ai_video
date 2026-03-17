@@ -13,6 +13,9 @@ FEISHU_APP_SECRET: str = "HgEKF5zy1duNjybrDP92DfnXJphUjEOD"
 
 # 目标群聊 chat_id，通过该群组向 OpenClaw 发送消息并接收回复
 FEISHU_TARGET_CHAT_ID: str = "oc_10e5e1d2510be2545d0b9c703b8b9e9d"
+# 飞书事件订阅：在开发者后台配置请求地址后，填入 Verification Token 和 Encrypt Key（未加密可留空）
+FEISHU_VERIFICATION_TOKEN: str = ""
+FEISHU_ENCRYPT_KEY: str = ""
 
 # 测试指令（python openclaw.py 直接运行时使用）
 TEST_TASK_TEXT: str = "ping: 请回复我一句 ok，并说明你当前可用的模型提供方列表。"

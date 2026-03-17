@@ -19,10 +19,11 @@ from pydantic import BaseModel
 from typing import Optional
 
 # 导入主流程
-from main import build_storyboard_prompt, build_recording_instruction, run_workflow, DEFAULT_PROMPT, prompt_to_recording_instruction
-from openclaw import send_as_user_and_wait_reply
+from main import build_storyboard_prompt, build_recording_instruction, run_workflow, run_recording_full_pipeline, DEFAULT_PROMPT, prompt_to_recording_instruction
+from openclaw import send_as_user_and_wait_reply, get_feishu_event_handler
 from config import (
     OPENCLAW_REPLY_TIMEOUT,
+    VIDEO_DURATION_MINUTES,
     VIDEO_SHOOT_DIR,
     VIDEO_DIGITAL_HUMAN_DIR,
     VIDEO_CARTOON_HEAD_DIR,
@@ -201,6 +202,29 @@ def extend_openclaw(job_id: str):
     return {"ok": True}
 
 
+# ─── 飞书事件 Webhook（接收 OpenClaw 回复，需在飞书开发者后台配置请求地址）────
+from lark_oapi.core.model import RawRequest
+
+
+@app.post("/api/feishu/event")
+async def feishu_webhook(request: Request):
+    """飞书事件订阅回调。配置：开发者后台 → 事件与回调 → 请求地址 = {本机公网 URL}/api/feishu/event"""
+    body = await request.body()
+    headers = {k: v for k, v in request.headers.items()}
+    req = RawRequest()
+    req.uri = str(request.url.path)
+    req.body = body
+    req.headers = headers
+    handler = get_feishu_event_handler()
+    resp = handler.do(req)
+    from starlette.responses import Response
+    return Response(
+        content=resp.content.decode("utf-8") if resp.content else "",
+        status_code=resp.status_code or 200,
+        headers=dict(resp.headers) if resp.headers else {},
+    )
+
+
 def _get_log_entries(job_id: str):
     with jobs_lock:
         if job_id not in jobs:
@@ -251,6 +275,18 @@ def serve_file(folder: str, filename: str):
         raise HTTPException(404, "file not found")
     path = (OUTPUTS / folder / filename).resolve()
     if not path.exists() or not path.is_file() or not str(path).startswith(str(OUTPUTS.resolve())):
+        raise HTTPException(404, "file not found")
+    return FileResponse(path)
+
+
+@app.get("/api/recording/output/{filename:path}")
+def serve_recording_output(filename: str):
+    """提供录屏先行合成的最终视频下载。"""
+    if ".." in filename:
+        raise HTTPException(404, "file not found")
+    base = ROOT / "video_module" / "output"
+    path = (base / filename).resolve()
+    if not path.exists() or not path.is_file() or not str(path).startswith(str(base.resolve())):
         raise HTTPException(404, "file not found")
     return FileResponse(path)
 
@@ -396,6 +432,9 @@ def create_recording_job(req: CreateRecordingJobRequest):
             "local_digital_human": req.local_digital_human or "",
             "local_cartoon_head": req.local_cartoon_head or "",
             "local_recording": req.local_recording or "",
+            "skip_openclaw": False,
+            "extend_openclaw": False,
+            "openclaw_manual_filename": None,
         }
 
     def run():
@@ -404,9 +443,12 @@ def create_recording_job(req: CreateRecordingJobRequest):
         try:
             _log_recording(job_id, "录屏先行流程启动")
             with jobs_lock:
-                use_local = recording_jobs[job_id].get("use_local_videos")
-            if use_local:
-                _log_recording(job_id, "使用本地视频模式，跳过 OpenClaw")
+                rj = recording_jobs[job_id]
+                use_local = rj.get("use_local_videos")
+                has_recording = bool((rj.get("local_recording") or "").strip())
+            # 使用本地视频模式 或 已指定录屏视频 → 跳过 OpenClaw，直接进入下一步
+            if use_local or has_recording:
+                _log_recording(job_id, "已选择录屏视频，跳过 OpenClaw，直接完成。")
                 with jobs_lock:
                     rj = recording_jobs[job_id]
                     rj["resolved_local_videos"] = {
@@ -435,14 +477,40 @@ def create_recording_job(req: CreateRecordingJobRequest):
                     req.prompt,
                     output_filename=req.output_filename or "recording.mp4",
                 )
-                _log_recording(job_id, "指令已生成，发送给 OpenClaw...")
+                _log_recording(job_id, "OPENCLAW 指令已生成，发送给 OpenClaw...")
             except Exception as e:
                 _log_recording(job_id, f"AI 转换失败: {e}")
                 recording_jobs[job_id]["status"] = "error"
                 return
             wait_oc = req.wait_openclaw if req.wait_openclaw is not None else True
-            reply = send_as_user_and_wait_reply(instruction, timeout=OPENCLAW_REPLY_TIMEOUT, wait=wait_oc)
-            _log_recording(job_id, f"回复：{reply[:200] if reply else '（无）'}...")
+
+            def cancel_check():
+                with jobs_lock:
+                    return recording_jobs.get(job_id, {}).get("skip_openclaw", False)
+
+            def extend_check():
+                with jobs_lock:
+                    v = recording_jobs.get(job_id, {}).get("extend_openclaw", False)
+                    if v:
+                        recording_jobs[job_id]["extend_openclaw"] = False
+                    return v
+
+            reply = send_as_user_and_wait_reply(
+                instruction,
+                timeout=OPENCLAW_REPLY_TIMEOUT,
+                wait=wait_oc,
+                cancel_check=cancel_check,
+                extend_check=extend_check,
+            )
+            skipped = cancel_check() if reply is None else False
+            if reply:
+                _log_recording(job_id, f"回复：{reply[:200]}...")
+            elif skipped:
+                _log_recording(job_id, "用户选择使用最新视频/指定文件继续，跳过等待。")
+                reply = "（用户选择跳过等待，使用最新视频继续。可在飞书群聊中查看 OpenClaw 的实际回复。）"
+            else:
+                _log_recording(job_id, "未收到 OpenClaw 回复（超时）。")
+                reply = "（超时未收到回复。请确认飞书事件订阅已配置，或选择使用最新视频继续。）"
             with jobs_lock:
                 recording_jobs[job_id]["openclaw_reply"] = reply
                 recording_jobs[job_id]["instruction"] = instruction
@@ -488,6 +556,9 @@ def get_recording_job(job_id: str):
         "output_filename": data.get("output_filename", ""),
         "instruction": data.get("instruction"),
         "openclaw_reply": data.get("openclaw_reply"),
+        "resolved_local_videos": data.get("resolved_local_videos"),
+        "pipeline_status": data.get("pipeline_status"),
+        "final_video": data.get("final_video"),
         "logs": [
             {"ts": e.get("ts"), "text": e.get("text", ""), "step": "info"}
             for e in data.get("logs", [])
@@ -497,13 +568,106 @@ def get_recording_job(job_id: str):
 
 @app.post("/api/recording/jobs/{job_id}/skip-openclaw")
 def skip_recording_openclaw(job_id: str, filename: Optional[str] = Query(None)):
+    """跳过等待：使用最新视频（filename 空）或指定文件名继续。"""
     with jobs_lock:
         if job_id not in recording_jobs:
             raise HTTPException(404, "job not found")
         recording_jobs[job_id]["skip_openclaw"] = True
-        if filename:
-            recording_jobs[job_id]["openclaw_manual_filename"] = filename
+        recording_jobs[job_id]["openclaw_manual_filename"] = filename if filename and filename.strip() else None
     return {"ok": True}
+
+
+@app.post("/api/recording/jobs/{job_id}/extend-openclaw")
+def extend_recording_openclaw(job_id: str):
+    """延长等待：再等待 60 秒。"""
+    with jobs_lock:
+        if job_id not in recording_jobs:
+            raise HTTPException(404, "job not found")
+        recording_jobs[job_id]["extend_openclaw"] = True
+    return {"ok": True}
+
+
+def _to_absolute_video_path(rel_path: str) -> str:
+    """将相对路径转为绝对路径（基于项目根目录）。"""
+    if not rel_path or not rel_path.strip():
+        return ""
+    p = Path(rel_path.strip())
+    if p.is_absolute():
+        return str(p)
+    return str((ROOT / p).resolve())
+
+
+@app.post("/api/recording/jobs/{job_id}/run-pipeline")
+def run_recording_pipeline(job_id: str, duration_minutes: Optional[int] = Query(None)):
+    """
+    录屏先行：执行 AI 分析 → 口播文稿 → TTS → 数字人合成 → 卡通头覆盖 → 画中画 → 替换音频。
+    需在任务完成后调用。
+    """
+    with jobs_lock:
+        if job_id not in recording_jobs:
+            raise HTTPException(404, "job not found")
+        rj = recording_jobs[job_id].copy()
+    if rj.get("status") != "done":
+        raise HTTPException(400, "请先完成录屏步骤")
+
+    from main import _find_latest_recording, USE_LATEST_RECORDING
+
+    video_shoot_dir = ROOT / VIDEO_SHOOT_DIR if not str(VIDEO_SHOOT_DIR).startswith("/") else Path(VIDEO_SHOOT_DIR)
+    resolved = rj.get("resolved_local_videos") or {}
+
+    if resolved.get("recording"):
+        recording_path = _to_absolute_video_path(resolved["recording"])
+    else:
+        out_fn = rj.get("output_filename") or rj.get("openclaw_manual_filename")
+        filename = (out_fn.strip() if out_fn else None) or USE_LATEST_RECORDING
+        recording_path = _find_latest_recording(filename=filename, search_dir=str(video_shoot_dir))
+    if not recording_path or not Path(recording_path).exists():
+        raise HTTPException(400, "未找到录屏视频，请先完成录屏或选择本地视频")
+
+    digital_rel = resolved.get("digital_human") or ""
+    digital_folder = Path(digital_rel).name if "/" in str(digital_rel) else (digital_rel or VIDEO_DIGITAL_HUMAN_DEFAULT)
+    cartoon_rel = resolved.get("cartoon_head") or ""
+    cartoon_path = _to_absolute_video_path(cartoon_rel)
+    if not cartoon_path or not Path(cartoon_path).exists():
+        cartoon_path = str(ROOT / VIDEO_CARTOON_HEAD_DIR / VIDEO_CARTOON_HEAD_DEFAULT)
+
+    prompt = rj.get("prompt") or rj.get("instruction") or "录屏演示内容"
+    openclaw_reply = rj.get("openclaw_reply") or ""
+    output_filename = rj.get("output_filename") or "recording.mp4"
+    dur = duration_minutes if duration_minutes is not None else VIDEO_DURATION_MINUTES
+
+    def log_fn(step: str, msg: str):
+        _log_recording(job_id, f"[{step}] {msg}")
+
+    with jobs_lock:
+        recording_jobs[job_id]["pipeline_status"] = "running"
+
+    def run():
+        try:
+            artifacts = run_recording_full_pipeline(
+                prompt=prompt,
+                recording_path=recording_path,
+                digital_human_folder=digital_folder,
+                cartoon_head_path=cartoon_path,
+                duration_minutes=dur,
+                openclaw_reply=openclaw_reply if openclaw_reply and "(用户" not in openclaw_reply and "（用户" not in openclaw_reply else None,
+                output_filename=Path(output_filename).name if output_filename else "recording.mp4",
+                log_fn=log_fn,
+                outputs_base=str(OUTPUTS),
+            )
+            with jobs_lock:
+                if job_id in recording_jobs:
+                    recording_jobs[job_id]["pipeline_status"] = "done"
+                    recording_jobs[job_id]["pipeline_artifacts"] = artifacts
+                    recording_jobs[job_id]["final_video"] = artifacts.get("output_copy") or artifacts.get("final_video")
+        except Exception as e:
+            _log_recording(job_id, f"合成失败: {e}")
+            with jobs_lock:
+                if job_id in recording_jobs:
+                    recording_jobs[job_id]["pipeline_status"] = "error"
+
+    threading.Thread(target=run, daemon=True).start()
+    return {"ok": True, "message": "已开始合成流程"}
 
 
 @app.get("/api/recording/jobs/{job_id}/logs")
