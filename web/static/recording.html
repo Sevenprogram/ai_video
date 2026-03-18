@@ -3,258 +3,711 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>AI 视频工作流 - 录屏先行</title>
+<title>AI 数字人视频 - 录屏先行</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
-  --bg: #0b0e14; --surface: #131720; --border: #1e2535;
-  --text: #c9d1e0; --muted: #4a5568; --accent: #3ecf8e; --accent2: #5b7fff;
-  --warn: #f6c90e; --err: #ff5c5c;
-  --step-openclaw: #3ecf8e;
-  --radius: 10px; --mono: 'Space Mono', monospace; --sans: 'DM Sans', sans-serif;
+  --bg-primary: #0a0e17;
+  --bg-secondary: #111827;
+  --bg-tertiary: #1a2234;
+  --bg-card: #151d2e;
+  --border: #2a3548;
+  --border-light: #3a4558;
+  --text-primary: #f0f4f8;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --accent: #22d3ee;
+  --accent-glow: rgba(34, 211, 238, 0.3);
+  --accent-secondary: #a78bfa;
+  --success: #34d399;
+  --warning: #fbbf24;
+  --error: #f87171;
+  --gradient-start: #0891b2;
+  --gradient-end: #7c3aed;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+  --shadow-glow: 0 0 30px var(--accent-glow);
+  --font-sans: 'Noto Sans SC', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
 }
 html, body { height: 100%; }
 body {
-  background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px;
-  display: flex; flex-direction: column; overflow: hidden;
+  background: var(--bg-primary);
+  background-image: 
+    radial-gradient(ellipse at 20% 0%, rgba(8, 145, 178, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 100%, rgba(124, 58, 237, 0.1) 0%, transparent 50%);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.6;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 .app {
   display: grid;
-  grid-template-columns: 320px 1fr;
-  grid-template-rows: 52px 1fr;
+  grid-template-columns: 360px 1fr;
+  grid-template-rows: 64px 1fr;
   height: 100vh;
+  gap: 1px;
+  background: var(--border);
 }
 header {
   grid-column: 1 / -1;
-  background: var(--surface); border-bottom: 1px solid var(--border);
-  display: flex; align-items: center; padding: 0 20px; gap: 12px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 16px;
 }
-header .logo { font-family: var(--mono); font-size: 13px; color: var(--accent); letter-spacing: 0.04em; }
-header .subtitle { font-size: 12px; color: var(--muted); }
-header .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: pulse 2s ease-in-out infinite; }
-header a { margin-left: auto; color: var(--muted); font-size: 12px; text-decoration: none; }
-header a:hover { color: var(--accent2); }
-@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.header-logo {
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  box-shadow: var(--shadow-glow);
+}
+.header-title {
+  font-size: 18px;
+  font-weight: 700;
+  background: linear-gradient(90deg, var(--accent), var(--accent-secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: 0.02em;
+}
+.header-subtitle {
+  font-size: 12px;
+  color: var(--text-muted);
+  padding-left: 16px;
+  border-left: 1px solid var(--border);
+}
+.header-link {
+  margin-left: auto;
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 13px;
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.header-link:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
 .left-panel {
-  background: var(--surface); border-right: 1px solid var(--border);
-  display: flex; flex-direction: column; overflow: hidden;
+  background: var(--bg-secondary);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 20px;
+  gap: 16px;
 }
-.section-title {
-  font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
-  padding: 14px 16px 8px;
+.panel-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
-.prompt-box { padding: 0 12px 12px; display: flex; flex-direction: column; gap: 8px; }
-textarea#prompt {
-  background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
-  color: var(--text); font-family: var(--mono); font-size: 11px; line-height: 1.6;
-  padding: 10px 12px; resize: none; height: 140px; outline: none;
+.panel-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
 }
-textarea#prompt:focus { border-color: var(--accent2); }
-.prompt-box label { font-size: 11px; color: var(--muted); margin-bottom: 2px; }
-.prompt-box select {
-  background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
-  color: var(--text); font-family: var(--mono); font-size: 11px; padding: 6px 10px; outline: none;
-}
-.filename-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.filename-row input {
-  flex: 1; min-width: 120px; max-width: 200px;
-  background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
-  color: var(--text); font-family: var(--mono); font-size: 11px; padding: 6px 10px;
-}
-.filename-row .hint { font-size: 10px; color: var(--muted); }
-.skip-row { display: flex; gap: 8px; flex-wrap: wrap; }
-.skip-row.hidden { display: none; }
-.btn-skip { background: var(--border); color: var(--text); border: none; border-radius: 6px; padding: 6px 12px; font-size: 11px; cursor: pointer; }
-.btn-skip:hover { background: #2a3142; }
-.btn-run {
-  background: var(--accent); color: #000; border: none; border-radius: var(--radius);
-  font-size: 13px; font-weight: 700; padding: 10px; cursor: pointer;
-  display: flex; align-items: center; justify-content: center; gap: 7px;
-}
-.btn-run:hover { opacity: .88; }
-.btn-run:disabled { opacity: .35; cursor: not-allowed; }
-.history-list { flex: 1; overflow-y: auto; padding: 0 8px 12px; }
-.history-item {
-  padding: 9px 10px; border-radius: 8px; cursor: pointer; border: 1px solid transparent; margin-bottom: 4px;
-}
-.history-item:hover { background: rgba(255,255,255,.04); }
-.history-item.active { background: rgba(94,135,255,.1); border-color: var(--accent2); }
-.status-badge { font-size: 10px; padding: 2px 7px; border-radius: 20px; }
-.status-badge.pending { background: rgba(74,85,104,.3); color: var(--muted); }
-.status-badge.running { background: rgba(91,127,255,.18); color: var(--accent2); }
-.status-badge.done { background: rgba(62,207,142,.15); color: var(--accent); }
-.status-badge.error { background: rgba(255,92,92,.15); color: var(--err); }
-.right-panel { display: flex; flex-direction: column; overflow: hidden; padding: 16px; gap: 14px; }
-.steps-bar { display: grid; grid-template-columns: 1fr; gap: 10px; }
-.step-card {
-  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 12px 14px; display: flex; align-items: center; gap: 10px; position: relative;
-}
-.step-card::before {
-  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
-  background: var(--step-color, var(--border)); transform: scaleX(0); transition: transform .4s;
-}
-.step-card.running::before { transform: scaleX(1); animation: progress-bar 1.5s ease-in-out infinite alternate; }
-.step-card.done::before { transform: scaleX(1); }
-@keyframes progress-bar { from { transform: scaleX(0.1); } to { transform: scaleX(1); } }
-.step-card[data-step="openclaw"] { --step-color: var(--step-openclaw); }
-.step-card[data-step="pipeline"] { --step-color: #e056fd; }
-.body-row { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; min-height: 0; }
-.panel {
-  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
-  display: flex; flex-direction: column; overflow: hidden;
-}
-.panel-header {
-  padding: 10px 14px; border-bottom: 1px solid var(--border);
-  font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted);
-}
-.log-body { flex: 1; overflow-y: auto; padding: 10px 14px; font-family: var(--mono); font-size: 11px; line-height: 1.7; }
-.log-line { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 2px; }
-.log-ts { color: var(--muted); flex-shrink: 0; font-size: 10px; }
-.log-step-tag { font-size: 9px; padding: 1px 5px; border-radius: 3px; flex-shrink: 0; }
-.log-msg { color: var(--text); word-break: break-all; }
-.log-line.step-openclaw .log-step-tag { background: rgba(62,207,142,.15); color: var(--step-openclaw); }
-.log-line.step-error .log-step-tag { background: rgba(255,92,92,.15); color: var(--err); }
-.log-line.step-error .log-msg { color: var(--err); }
-.log-line .log-waiting { color: var(--warn); }
-.results-body { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
-.result-block { display: flex; flex-direction: column; gap: 6px; }
-.result-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
-.openclaw-reply {
-  background: rgba(62,207,142,.08); border: 1px solid rgba(62,207,142,.25); border-radius: 6px;
-  padding: 10px 12px; font-size: 12px; color: var(--accent); font-family: var(--mono); white-space: pre-wrap; word-break: break-all;
-}
-.script-preview { font-size: 11px; color: var(--muted); }
-a.download-link { font-size: 11px; color: var(--accent2); text-decoration: none; display: inline-block; margin-top: 4px; }
-a.download-link:hover { text-decoration: underline; }
-.empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--muted); gap: 8px; padding: 40px; text-align: center; }
-.spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid rgba(255,255,255,.15); border-top-color: var(--accent2); border-radius: 50%; animation: spin .7s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
-.prompt-section.hidden { display: none !important; }
-.checkbox-row { display: flex; align-items: center; }
-.checkbox-label { font-size: 11px; color: var(--text); display: flex; align-items: center; gap: 6px; cursor: pointer; }
-.checkbox-label input { width: 14px; height: 14px; accent-color: var(--accent); }
-.local-videos-row { display: flex; flex-direction: column; gap: 6px; padding: 8px 0; }
-.local-video-select {
-  background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
-  color: var(--text); font-family: var(--mono); font-size: 11px; padding: 6px 10px;
+.select-field {
   width: 100%;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 13px;
+  padding: 10px 14px;
+  outline: none;
+  cursor: pointer;
+  transition: all 0.2s;
 }
+.select-field:focus {
+  border-color: var(--accent);
+}
+textarea#prompt, textarea#script-storyboard {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.7;
+  padding: 14px 16px;
+  resize: none;
+  outline: none;
+  transition: all 0.2s;
+}
+textarea#prompt:focus, textarea#script-storyboard:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+textarea#prompt { height: 140px; }
+textarea#script-storyboard { height: 100px; }
+.input-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.input-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.input-field {
+  width: 180px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  padding: 10px 14px;
+  outline: none;
+  transition: all 0.2s;
+}
+.input-field:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+.checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  transition: all 0.2s;
+}
+.checkbox-item:hover {
+  background: var(--bg-tertiary);
+}
+.checkbox-item input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.checkbox-item span {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.btn-primary {
+  background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+  color: white;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 14px 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: all 0.3s;
+  box-shadow: var(--shadow-glow);
+}
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px var(--accent-glow);
+}
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+.btn-secondary {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-secondary:hover {
+  background: var(--border);
+  color: var(--text-primary);
+}
+.hidden { display: none !important; }
+.openclaw-panel {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  animation: slideDown 0.3s ease;
+}
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.openclaw-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.openclaw-title::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  background: var(--warning);
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.openclaw-btns {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.history-section {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.history-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+.history-item {
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  border: 1px solid transparent;
+  margin-bottom: 6px;
+  transition: all 0.2s;
+}
+.history-item:hover {
+  background: var(--bg-tertiary);
+}
+.history-item.active {
+  background: rgba(34, 211, 238, 0.1);
+  border-color: var(--accent);
+}
+.history-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  margin-bottom: 6px;
+}
+.history-status.pending { background: rgba(100, 116, 139, 0.2); color: var(--text-muted); }
+.history-status.running { background: rgba(34, 211, 238, 0.2); color: var(--accent); }
+.history-status.done { background: rgba(52, 211, 153, 0.2); color: var(--success); }
+.history-status.error { background: rgba(248, 113, 113, 0.2); color: var(--error); }
+.history-prompt {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.history-time {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 4px;
+  font-family: var(--font-mono);
+}
+.right-panel {
+  background: var(--bg-secondary);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 20px;
+  gap: 16px;
+}
+.steps-container {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+.step-item {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s;
+}
+.step-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--step-color, var(--border));
+  transform: scaleX(0);
+  transition: transform 0.4s ease;
+}
+.step-item.active::before {
+  transform: scaleX(1);
+}
+.step-item.completed::before {
+  transform: scaleX(1);
+  background: var(--success);
+}
+.step-item.error::before {
+  transform: scaleX(1);
+  background: var(--error);
+}
+.step-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: var(--bg-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+  transition: all 0.3s;
+}
+.step-item.active .step-icon {
+  background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+  box-shadow: var(--shadow-glow);
+}
+.step-item.completed .step-icon {
+  background: var(--success);
+}
+.step-content {
+  flex: 1;
+  min-width: 0;
+}
+.step-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+.step-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.main-content {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  min-height: 0;
+}
+.content-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.panel-title {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+.log-entry {
+  display: flex;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  animation: fadeIn 0.2s ease;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateX(-5px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.log-time {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  width: 70px;
+}
+.log-tag {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  font-weight: 500;
+}
+.log-tag.openclaw { background: rgba(34, 211, 238, 0.2); color: var(--accent); }
+.log-tag.pipeline { background: rgba(124, 58, 237, 0.2); color: var(--accent-secondary); }
+.log-tag.done { background: rgba(52, 211, 153, 0.2); color: var(--success); }
+.log-tag.error { background: rgba(248, 113, 113, 0.2); color: var(--error); }
+.log-message {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-secondary);
+  word-break: break-all;
+}
+.empty-state {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  gap: 12px;
+  text-align: center;
+  padding: 40px;
+}
+.empty-icon {
+  font-size: 48px;
+  opacity: 0.3;
+}
+.result-card {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  margin-bottom: 12px;
+}
+.result-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.result-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.result-content {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+.result-media {
+  width: 100%;
+  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+}
+.download-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--accent);
+  text-decoration: none;
+  transition: all 0.2s;
+}
+.download-btn:hover {
+  color: var(--text-primary);
+}
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,0.2);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-tertiary); border-radius: 3px; }
+::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
 </style>
 </head>
 <body>
 <div class="app">
   <header>
-    <div class="dot"></div>
-    <span class="logo">AI VIDEO WORKFLOW</span>
-    <span class="subtitle">录屏先行 · 直接发送录屏任务给 OpenClaw</span>
-    <a href="/">← 主流程</a>
+    <div class="header-brand">
+      <div class="header-logo">📹</div>
+      <span class="header-title">AI Video Studio</span>
+      <span class="header-subtitle">录屏先行模式</span>
+    </div>
+    <a href="/" class="header-link">
+      <span>🏠</span> 返回主流程
+    </a>
   </header>
+  
   <aside class="left-panel">
-    <div class="section-title">录屏输入</div>
-    <div class="prompt-box">
-      <label for="mode">模式</label>
-      <select id="mode">
+    <div class="panel-section">
+      <div class="panel-label">录屏模式</div>
+      <select id="mode" class="select-field">
         <option value="openclaw">OpenClaw 生成录屏指令</option>
         <option value="local">使用本地视频</option>
       </select>
-      <div class="prompt-section" id="promptSection">
-        <label for="prompt">提示词（AI 将自动转换为结构化指令）</label>
-        <textarea id="prompt" placeholder="输入自由描述，例如：请打开 coinglass.com 并录制爆仓热力图 60 秒，然后打开 ezpro.club 的 daytrade 页面…"></textarea>
+    </div>
+    
+    <div class="panel-section" id="promptSection">
+      <div class="panel-label">提示词</div>
+      <textarea id="prompt" placeholder="输入自由描述，例如：请打开 coinglass.com 并录制爆仓热力图 60 秒..."></textarea>
+    </div>
+    
+    <div class="panel-section">
+      <div class="checkbox-group">
+        <label class="checkbox-item">
+          <input type="checkbox" id="wait-openclaw" checked />
+          <span>等待 OpenClaw 回复</span>
+        </label>
       </div>
-      <div class="checkbox-row">
-        <label class="checkbox-label"><input type="checkbox" id="wait-openclaw" checked /> 等待 OpenClaw 回复</label>
+    </div>
+    
+    <div class="panel-section">
+      <div class="input-row">
+        <span class="input-label">保存文件名</span>
+        <input type="text" id="outputFilename" class="input-field" placeholder="recording_001.mp4" />
       </div>
-      <div class="filename-row">
-        <label style="flex-basis:100%">保存文件名</label>
-        <input type="text" id="outputFilename" placeholder="template_001.mp4" />
-        <span class="hint">保存到 video_shoot/</span>
+    </div>
+    
+    <div class="panel-section">
+      <div class="panel-label">本地视频选择</div>
+      <select id="local-digital-human" class="select-field"></select>
+      <select id="local-cartoon-head" class="select-field"></select>
+      <select id="local-recording" class="select-field"></select>
+    </div>
+    
+    <div class="panel-section hidden" id="scriptSourceSection">
+      <div class="panel-label">口播文稿来源</div>
+      <select id="script-source" class="select-field">
+        <option value="ai_analyze">AI 分析视频内容生成</option>
+        <option value="manual_storyboard">输入分镜内容，AI 生成</option>
+        <option value="local_file">选择本地文稿文件</option>
+      </select>
+      <div class="hidden" id="scriptStoryboardRow">
+        <textarea id="script-storyboard" placeholder="输入视频各分镜的主要内容，AI 将据此生成口播文稿..."></textarea>
       </div>
-      <div class="local-videos-row">
-        <label style="font-size:10px;color:var(--muted)">数字人视频</label>
-        <select id="local-digital-human" class="local-video-select"></select>
-        <label style="font-size:10px;color:var(--muted)">卡通头部视频</label>
-        <select id="local-cartoon-head" class="local-video-select"></select>
-        <label style="font-size:10px;color:var(--muted)">录屏视频 <span id="recording-hint" style="color:var(--accent)"></span></label>
-        <select id="local-recording" class="local-video-select"></select>
+      <div class="hidden" id="scriptLocalRow">
+        <select id="script-local-file" class="select-field"></select>
       </div>
-      <div class="script-source-section hidden" id="scriptSourceSection">
-        <label style="font-size:10px;color:var(--muted)">口播文稿来源</label>
-        <select id="script-source" class="local-video-select">
-          <option value="ai_analyze">1. AI 分析视频内容生成</option>
-          <option value="manual_storyboard">2. 输入分镜内容，AI 生成</option>
-          <option value="local_file">3. 选择本地文稿文件</option>
-        </select>
-        <div class="script-storyboard-row hidden" id="scriptStoryboardRow">
-          <label style="font-size:10px;color:var(--muted)">分镜主要内容</label>
-          <textarea id="script-storyboard" placeholder="输入视频各分镜的主要内容，AI 将据此生成口播文稿…" style="height:80px;resize:vertical;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;padding:8px;margin-top:4px"></textarea>
-        </div>
-        <div class="script-local-row hidden" id="scriptLocalRow">
-          <label style="font-size:10px;color:var(--muted)">选择本地文稿（spoken_script/）</label>
-          <select id="script-local-file" class="local-video-select"></select>
-        </div>
+    </div>
+    
+    <div class="openclaw-panel hidden" id="openclawPanel">
+      <div class="openclaw-title">等待 OpenClaw 响应</div>
+      <div class="openclaw-btns">
+        <button class="btn-secondary" id="skipLatest">使用最新视频</button>
+        <button class="btn-secondary" id="skipFile">指定文件</button>
+        <button class="btn-secondary" id="extendWait">再等 60s</button>
       </div>
-      <div class="skip-row hidden" id="skipRow">
-        <button class="btn-skip" id="skipLatest">使用最新视频继续</button>
-        <button class="btn-skip" id="skipFile">使用指定文件继续</button>
-        <button class="btn-skip btn-extend" id="extendWait" style="background:rgba(246,201,14,.15);color:var(--warn)">再等 60 秒</button>
-      </div>
-      <div class="skip-row hidden" id="pipelineRow">
-        <button class="btn-run" id="btnPipeline" style="font-size:12px;padding:8px 14px">生成最终视频</button>
-      </div>
-      <button class="btn-run" id="btn-run">
-        <span id="btn-icon">▶</span>
-        <span id="btn-text">开始</span>
+    </div>
+    
+    <div class="panel-section hidden" id="pipelineRow">
+      <button class="btn-primary" id="btnPipeline" style="width:100%">
+        <span>🎬</span> 生成最终视频
       </button>
     </div>
-    <div class="section-title">历史任务</div>
-    <div class="history-list" id="history-list"></div>
+    
+    <button class="btn-primary" id="btn-run">
+      <span id="btn-icon">▶</span>
+      <span id="btn-text">开始</span>
+    </button>
+    
+    <div class="history-section">
+      <div class="panel-label">历史任务</div>
+      <div class="history-list" id="history-list"></div>
+    </div>
   </aside>
+  
   <main class="right-panel">
-    <div class="steps-bar">
-      <div class="step-card" data-step="openclaw" id="step-openclaw">
+    <div class="steps-container">
+      <div class="step-item" data-step="openclaw">
         <div class="step-icon">🖥</div>
-        <div class="step-info">
-          <div class="step-name">1. 录屏</div>
+        <div class="step-content">
+          <div class="step-title">1. 录屏</div>
           <div class="step-desc" id="step-openclaw-desc">发送提示词并等待录屏完成</div>
         </div>
       </div>
-      <div class="step-card" data-step="pipeline" id="step-pipeline">
+      <div class="step-item" data-step="pipeline">
         <div class="step-icon">🎬</div>
-        <div class="step-info">
-          <div class="step-name">2. 视频合成</div>
-          <div class="step-desc" id="step-pipeline-desc">AI 文稿 → TTS → 数字人+卡通头 → 画中画 → 替换音频</div>
+        <div class="step-content">
+          <div class="step-title">2. 视频合成</div>
+          <div class="step-desc" id="step-pipeline-desc">AI 文稿 → TTS → 数字人+卡通头 → 画中画</div>
         </div>
       </div>
     </div>
-    <div class="body-row">
-      <div class="panel">
-        <div class="panel-header">
+    
+    <div class="main-content">
+      <div class="content-panel">
+        <div class="panel-title">
           <span>实时日志</span>
           <span id="log-spinner" style="display:none"><span class="spinner"></span></span>
         </div>
-        <div class="log-body" id="log-body">
+        <div class="panel-body" id="log-body">
           <div class="empty-state">
-            <div style="font-size:36px;opacity:.3">⏳</div>
-            <p>启动任务后，<br>实时日志将在这里显示。</p>
+            <div class="empty-icon">📋</div>
+            <p>启动任务后，实时日志将在这里显示</p>
           </div>
         </div>
       </div>
-      <div class="panel">
-        <div class="panel-header">产品预览</div>
-        <div class="results-body" id="results-body">
+      
+      <div class="content-panel">
+        <div class="panel-title">产物预览</div>
+        <div class="panel-body" id="results-body">
           <div class="empty-state">
-            <div style="font-size:36px;opacity:.3">🎬</div>
-            <p>每完成一个步骤，<br>已生成的素材将在这里展示。</p>
+            <div class="empty-icon">🎁</div>
+            <p>每完成一个步骤，产物将在这里展示</p>
           </div>
         </div>
       </div>
     </div>
   </main>
 </div>
+
 <script>
 let activeJobId = null;
 let evtSource = null;
@@ -267,9 +720,6 @@ function updateMode() {
   const isLocal = document.getElementById('mode').value === 'local';
   document.getElementById('promptSection').classList.toggle('hidden', isLocal);
   document.getElementById('scriptSourceSection').classList.toggle('hidden', !isLocal);
-  const rec = document.getElementById('local-recording');
-  const hint = document.getElementById('recording-hint');
-  if (hint) hint.textContent = (!isLocal && rec && rec.value) ? '（将跳过 OpenClaw）' : '';
   updateScriptSourceVisibility();
 }
 
@@ -280,7 +730,6 @@ function updateScriptSourceVisibility() {
 }
 
 document.getElementById('mode').addEventListener('change', updateMode);
-document.getElementById('local-recording').addEventListener('change', updateMode);
 document.getElementById('script-source').addEventListener('change', updateScriptSourceVisibility);
 
 async function loadLocalVideoSelects() {
@@ -330,24 +779,27 @@ async function startJob() {
   const scriptSource = document.getElementById('script-source').value || 'manual_storyboard';
   const scriptStoryboard = document.getElementById('script-storyboard').value.trim() || null;
   const scriptLocalFile = document.getElementById('script-local-file').value.trim() || null;
+  
   if (!useLocalVideos && !prompt && !localRecording) {
     alert('请输入提示词，或选择录屏视频');
     return;
   }
   if (useLocalVideos && localRecording) {
     if (scriptSource === 'manual_storyboard' && !scriptStoryboard) {
-      alert('请输入分镜主要内容，或选择其他口播文稿来源');
+      alert('请输入分镜主要内容');
       return;
     }
     if (scriptSource === 'local_file' && !scriptLocalFile) {
-      alert('请选择本地文稿文件，或选择其他口播文稿来源');
+      alert('请选择本地文稿文件');
       return;
     }
   }
+  
   document.getElementById('btn-run').disabled = true;
-  document.getElementById('btn-icon').innerHTML = '<span class="spinner" style="border-top-color:#000"></span>';
-  document.getElementById('btn-text').textContent = '运行中…';
+  document.getElementById('btn-icon').innerHTML = '<span class="spinner" style="border-top-color:#fff"></span>';
+  document.getElementById('btn-text').textContent = '运行中...';
   resetUI();
+  
   try {
     const res = await fetch('/api/recording/jobs', {
       method: 'POST',
@@ -379,14 +831,15 @@ async function startJob() {
 async function selectJob(jobId) {
   if (evtSource) { evtSource.close(); evtSource = null; }
   activeJobId = jobId;
-  document.getElementById('skipRow').classList.add('hidden');
+  document.getElementById('openclawPanel').classList.add('hidden');
   document.getElementById('log-spinner').style.display = '';
+  
   try {
     const res = await fetch('/api/recording/jobs/' + jobId);
     if (!res.ok) return;
     const job = await res.json();
-    setStepState('openclaw', job.status === 'done' ? 'done' : job.status === 'error' ? 'error' : job.status === 'running' ? 'running' : 'pending');
-    setStepState('pipeline', (job.pipeline_status === 'done' ? 'done' : job.pipeline_status === 'error' ? 'error' : job.pipeline_status === 'running' ? 'running' : 'pending'));
+    setStepState('openclaw', job.status === 'done' ? 'completed' : job.status === 'error' ? 'error' : job.status === 'running' ? 'active' : 'pending');
+    setStepState('pipeline', (job.pipeline_status === 'done' ? 'completed' : job.pipeline_status === 'error' ? 'error' : job.pipeline_status === 'running' ? 'active' : 'pending'));
     (job.logs || []).forEach(e => appendLog({ step: e.step || 'info', msg: e.text || e.msg, ts: e.ts }));
     renderResults(job);
     if (job.status === 'done' || job.status === 'error') {
@@ -409,22 +862,22 @@ function subscribeSSE(jobId) {
   evtSource.onmessage = (e) => {
     const d = JSON.parse(e.data);
     const text = d.text || '';
-    const isWaiting = /等待|OpenClaw|发送给/.test(text);
-    appendLog({ step: isWaiting ? 'openclaw' : 'info', msg: text, ts: d.ts });
-    if (/发送给 OpenClaw|AI 正在|录屏先行流程/.test(text)) {
-      setStepState('openclaw', 'running');
-      document.getElementById('skipRow').classList.remove('hidden');
+    appendLog({ step: d.step || 'info', msg: text, ts: d.ts });
+    
+    if (/发送给 OpenClaw|AI 正在|录屏先行/.test(text)) {
+      setStepState('openclaw', 'active');
+      document.getElementById('openclawPanel').classList.remove('hidden');
     }
-    if (/回复：|完成|用户选择|跳过等待|超时/.test(text)) {
-      setStepState('openclaw', 'done');
+    if (/回复：|完成|用户选择|跳过等待/.test(text)) {
+      setStepState('openclaw', 'completed');
       document.getElementById('pipelineRow').classList.remove('hidden');
       fetch('/api/recording/jobs/' + jobId).then(r => r.ok ? r.json() : null).then(j => { if (j) renderResults(j); });
     }
     if (/\[script\]|\[audio\]|\[pipeline\]/.test(text)) {
-      setStepState('pipeline', 'running');
+      setStepState('pipeline', 'active');
     }
     if (/视频合成完成/.test(text)) {
-      setStepState('pipeline', 'done');
+      setStepState('pipeline', 'completed');
       document.getElementById('pipelineRow').classList.add('hidden');
       fetch('/api/recording/jobs/' + jobId).then(r => r.ok ? r.json() : null).then(j => { if (j) renderResults(j); });
     }
@@ -452,23 +905,30 @@ function appendLog(entry) {
   const body = document.getElementById('log-body');
   const empty = body.querySelector('.empty-state');
   if (empty) empty.remove();
-  const ts = entry.ts ? new Date(entry.ts).toLocaleTimeString('zh-CN', { hour12: false }) : '';
-  const div = document.createElement('div');
+  
+  const time = entry.ts ? new Date(entry.ts).toLocaleTimeString('zh-CN', { hour12: false }) : '';
   const step = entry.msg && /错误/.test(entry.msg) ? 'error' : (entry.step || 'info');
-  div.className = 'log-line step-' + step;
-  const waitClass = /等待|OpenClaw|发送给/.test(entry.msg || '') ? ' log-waiting' : '';
-  div.innerHTML = '<span class="log-ts">' + ts + '</span><span class="log-step-tag">' + step.toUpperCase() + '</span><span class="log-msg' + waitClass + '">' + esc(entry.msg || '') + '</span>';
+  
+  const div = document.createElement('div');
+  div.className = 'log-entry';
+  div.innerHTML = `
+    <span class="log-time">${time}</span>
+    <span class="log-tag ${step}">${step.toUpperCase()}</span>
+    <span class="log-message">${esc(entry.msg || '')}</span>
+  `;
   body.appendChild(div);
   body.scrollTop = body.scrollHeight;
 }
 
 function setStepState(step, status) {
-  const card = document.getElementById('step-' + step);
+  const card = document.querySelector('.step-item[data-step="' + step + '"]');
   if (!card) return;
-  card.classList.remove('pending','running','done','error');
+  card.classList.remove('pending', 'active', 'completed', 'error');
   card.classList.add(status);
+  
   const icon = card.querySelector('.step-icon');
-  if (icon) icon.textContent = { pending: '○', running: '⚙️', done: '✅', error: '❌' }[status] || '○';
+  const icons = { pending: '○', active: '⚡', completed: '✓', error: '✕' };
+  if (icon) icon.textContent = icons[status] || '○';
 }
 
 function renderResults(job) {
@@ -477,10 +937,13 @@ function renderResults(job) {
   if (empty) empty.remove();
   body.innerHTML = '';
 
-  if (job.status === 'done') {
+  if (job.status === 'completed') {
     const b = document.createElement('div');
-    b.className = 'result-block';
-    b.innerHTML = '<div class="result-label">🖥 录屏</div><div class="script-preview">录屏已完成</div>';
+    b.className = 'result-card';
+    b.innerHTML = `
+      <div class="result-header"><span class="result-title">🖥 录屏</span></div>
+      <div class="result-content">录屏已完成</div>
+    `;
     body.appendChild(b);
   }
 
@@ -489,21 +952,32 @@ function renderResults(job) {
 
   if (folder && (pa.script || pa.run_dir)) {
     const block = document.createElement('div');
-    block.className = 'result-block';
-    block.innerHTML = '<div class="result-label">📝 口播文稿</div><a class="download-link" href="/api/files/' + esc(folder) + '/script.txt" download>下载 script.txt</a>';
+    block.className = 'result-card';
+    block.innerHTML = `
+      <div class="result-header"><span class="result-title">📝 口播文稿</span></div>
+      <a class="download-btn" href="/api/files/${esc(folder)}/script.txt" download>⬇ 下载 script.txt</a>
+    `;
     body.appendChild(block);
   }
   if (folder && (pa.audio || pa.run_dir)) {
     const block = document.createElement('div');
-    block.className = 'result-block';
-    block.innerHTML = '<div class="result-label">🔊 音频</div><audio controls style="width:100%;max-height:60px"><source src="/api/files/' + esc(folder) + '/audio.mp3" type="audio/mpeg"></audio><a class="download-link" href="/api/files/' + esc(folder) + '/audio.mp3" download>下载 audio.mp3</a>';
+    block.className = 'result-card';
+    block.innerHTML = `
+      <div class="result-header"><span class="result-title">🔊 音频</span></div>
+      <audio controls class="result-media"><source src="/api/files/${esc(folder)}/audio.mp3" type="audio/mpeg"></audio>
+      <a class="download-btn" href="/api/files/${esc(folder)}/audio.mp3" download>⬇ 下载 audio.mp3</a>
+    `;
     body.appendChild(block);
   }
   if (job.final_video) {
     const block = document.createElement('div');
-    block.className = 'result-block';
+    block.className = 'result-card';
     const fn = (job.final_video || '').split('/').pop() || 'final.mp4';
-    block.innerHTML = '<div class="result-label">✅ 最终视频</div><video controls style="width:100%;max-height:200px;border-radius:6px"><source src="/api/recording/output/' + encodeURIComponent(fn) + '" type="video/mp4"></video><a class="download-link" href="/api/recording/output/' + encodeURIComponent(fn) + '" download>下载 ' + esc(fn) + '</a>';
+    block.innerHTML = `
+      <div class="result-header"><span class="result-title">🎞 最终视频</span></div>
+      <video controls class="result-media"><source src="/api/recording/output/${encodeURIComponent(fn)}" type="video/mp4"></video>
+      <a class="download-btn" href="/api/recording/output/${encodeURIComponent(fn)}" download>⬇ 下载 ${esc(fn)}</a>
+    `;
     body.appendChild(block);
   }
 }
@@ -515,29 +989,38 @@ async function refreshHistory() {
     const jobs = await res.json();
     const list = document.getElementById('history-list');
     list.innerHTML = '';
+    
     if (!jobs.length) {
-      list.innerHTML = '<div style="padding:10px 12px;color:var(--muted);font-size:11px">暂无任务</div>';
+      list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px">暂无任务记录</div>';
       return;
     }
+    
     jobs.forEach(job => {
       const el = document.createElement('div');
       el.className = 'history-item' + (job.id === activeJobId ? ' active' : '');
       el.onclick = () => selectJob(job.id);
-      const t = new Date(job.created_at).toLocaleTimeString('zh-CN', { hour12: false, hour: '2-digit', minute: '2-digit' });
-      el.innerHTML = '<div style="margin-bottom:3px"><span class="status-badge ' + job.status + '">' + { pending: '待运行', running: '运行中', done: '完成', error: '失败' }[job.status] + '</span> <span style="font-size:10px;color:var(--muted);font-family:var(--mono)">' + t + '</span></div><div style="font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(job.prompt || '') + '</div>';
+      
+      const time = new Date(job.created_at);
+      const timeStr = time.toLocaleDateString('zh-CN') + ' ' + time.toLocaleTimeString('zh-CN', { hour12: false, hour: '2-digit', minute: '2-digit' });
+      const statusMap = { pending: '待运行', running: '运行中', done: '已完成', error: '失败' };
+      
+      el.innerHTML = `
+        <div class="history-status ${job.status}">${statusMap[job.status]}</div>
+        <div class="history-prompt">${esc(job.prompt || '默认任务')}</div>
+        <div class="history-time">${timeStr}</div>
+      `;
       list.appendChild(el);
     });
   } catch (_) {}
 }
 
 function resetUI() {
-  document.getElementById('log-body').innerHTML = '<div class="empty-state"><div style="font-size:36px;opacity:.3">⏳</div><p>实时日志将在这里显示。</p></div>';
-  document.getElementById('results-body').innerHTML = '<div class="empty-state"><div style="font-size:36px;opacity:.3">🎬</div><p>每完成一个步骤，<br>已生成的素材将在这里展示。</p></div>';
+  document.getElementById('log-body').innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><p>实时日志将在这里显示</p></div>';
+  document.getElementById('results-body').innerHTML = '<div class="empty-state"><div class="empty-icon">🎁</div><p>产物将在这里展示</p></div>';
   setStepState('openclaw', 'pending');
   setStepState('pipeline', 'pending');
   document.getElementById('pipelineRow').classList.add('hidden');
-  const desc = document.getElementById('step-openclaw-desc');
-  if (desc) desc.textContent = '发送提示词并等待录屏完成';
+  document.getElementById('openclawPanel').classList.add('hidden');
 }
 
 document.getElementById('btn-run').onclick = startJob;
@@ -545,49 +1028,49 @@ document.getElementById('skipLatest').onclick = async () => {
   if (!activeJobId) return;
   try {
     await fetch('/api/recording/jobs/' + activeJobId + '/skip-openclaw', { method: 'POST' });
-    appendLog({ step: 'info', msg: '✓ 已选择使用最新视频继续' });
-  } catch (e) { appendLog({ step: 'error', msg: '跳过失败: ' + e.message }); }
+    appendLog({ step: 'openclaw', msg: '✓ 已选择使用最新视频继续' });
+  } catch (e) { appendLog({ step: 'error', msg: '操作失败: ' + e.message }); }
 };
 document.getElementById('skipFile').onclick = async () => {
   if (!activeJobId) return;
   const fn = prompt('输入文件名（如 xxx.mp4）：');
-  if (fn == null) return;
+  if (fn == null || !fn.trim()) return;
   try {
-    await fetch('/api/recording/jobs/' + activeJobId + '/skip-openclaw?filename=' + encodeURIComponent(fn), { method: 'POST' });
-    appendLog({ step: 'info', msg: '✓ 已选择指定文件继续' });
-  } catch (e) { appendLog({ step: 'error', msg: '跳过失败: ' + e.message }); }
+    await fetch('/api/recording/jobs/' + activeJobId + '/skip-openclaw?filename=' + encodeURIComponent(fn.trim()), { method: 'POST' });
+    appendLog({ step: 'openclaw', msg: '✓ 已选择文件: ' + fn.trim() });
+  } catch (e) { appendLog({ step: 'error', msg: '操作失败: ' + e.message }); }
 };
 document.getElementById('extendWait').onclick = async () => {
   if (!activeJobId) return;
   try {
     await fetch('/api/recording/jobs/' + activeJobId + '/extend-openclaw', { method: 'POST' });
-    appendLog({ step: 'info', msg: '✓ 已延长 60 秒，继续等待 OpenClaw 回复' });
-  } catch (e) { appendLog({ step: 'error', msg: '延长失败: ' + e.message }); }
+    appendLog({ step: 'openclaw', msg: '✓ 已延长 60 秒等待' });
+  } catch (e) { appendLog({ step: 'error', msg: '操作失败: ' + e.message }); }
 };
 document.getElementById('btnPipeline').onclick = async () => {
   if (!activeJobId) return;
   const btn = document.getElementById('btnPipeline');
   btn.disabled = true;
-  btn.textContent = '合成中…';
+  btn.innerHTML = '<span class="spinner"></span> 合成中...';
   try {
     const res = await fetch('/api/recording/jobs/' + activeJobId + '/run-pipeline', { method: 'POST' });
     if (!res.ok) throw new Error(await res.text());
-    appendLog({ step: 'info', msg: '已开始视频合成流程：AI 文稿 → TTS → 数字人+卡通头 → 画中画 → 替换音频' });
+    appendLog({ step: 'info', msg: '已开始视频合成流程' });
     subscribeSSE(activeJobId);
     const poll = () => {
       fetch('/api/recording/jobs/' + activeJobId).then(r => r.ok ? r.json() : null).then(j => {
         if (!j) return;
         if (j.pipeline_status === 'done') {
-          setStepState('pipeline', 'done');
+          setStepState('pipeline', 'completed');
           renderResults(j);
           btn.disabled = false;
-          btn.textContent = '生成最终视频';
+          btn.innerHTML = '<span>🎬</span> 生成最终视频';
           document.getElementById('pipelineRow').classList.add('hidden');
           return;
         }
         if (j.pipeline_status === 'error') {
           btn.disabled = false;
-          btn.textContent = '生成最终视频';
+          btn.innerHTML = '<span>🎬</span> 生成最终视频';
           return;
         }
         setTimeout(poll, 3000);
@@ -597,12 +1080,15 @@ document.getElementById('btnPipeline').onclick = async () => {
   } catch (e) {
     appendLog({ step: 'error', msg: '启动合成失败: ' + e.message });
     btn.disabled = false;
-    btn.textContent = '生成最终视频';
+    btn.innerHTML = '<span>🎬</span> 生成最终视频';
   }
 };
 
-updateMode();
-document.addEventListener('DOMContentLoaded', () => { loadLocalVideoSelects(); refreshHistory(); setInterval(refreshHistory, 5000); });
+document.addEventListener('DOMContentLoaded', () => {
+  loadLocalVideoSelects();
+  refreshHistory();
+  setInterval(refreshHistory, 5000);
+});
 </script>
 </body>
 </html>
