@@ -3,275 +3,747 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>AI 视频工作流仪表盘</title>
+<title>AI 数字人视频生成平台</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
-  --bg: #0b0e14; --surface: #131720; --border: #1e2535;
-  --text: #c9d1e0; --muted: #4a5568; --accent: #3ecf8e; --accent2: #5b7fff;
-  --warn: #f6c90e; --err: #ff5c5c;
-  --step-script: #5b7fff; --step-storyboard: #f6c90e; --step-openclaw: #3ecf8e;
-  --radius: 10px; --mono: 'Space Mono', monospace; --sans: 'DM Sans', sans-serif;
+  --bg-primary: #0a0e17;
+  --bg-secondary: #111827;
+  --bg-tertiary: #1a2234;
+  --bg-card: #151d2e;
+  --border: #2a3548;
+  --border-light: #3a4558;
+  --text-primary: #f0f4f8;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --accent: #22d3ee;
+  --accent-glow: rgba(34, 211, 238, 0.3);
+  --accent-secondary: #a78bfa;
+  --success: #34d399;
+  --warning: #fbbf24;
+  --error: #f87171;
+  --gradient-start: #0891b2;
+  --gradient-end: #7c3aed;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+  --shadow-glow: 0 0 30px var(--accent-glow);
+  --font-sans: 'Noto Sans SC', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
 }
 html, body { height: 100%; }
 body {
-  background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px;
-  display: flex; flex-direction: column; overflow: hidden;
+  background: var(--bg-primary);
+  background-image: 
+    radial-gradient(ellipse at 20% 0%, rgba(8, 145, 178, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 100%, rgba(124, 58, 237, 0.1) 0%, transparent 50%);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.6;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 .app {
   display: grid;
-  grid-template-columns: 320px 1fr;
-  grid-template-rows: 52px 1fr;
+  grid-template-columns: 360px 1fr;
+  grid-template-rows: 64px 1fr;
   height: 100vh;
+  gap: 1px;
+  background: var(--border);
 }
 header {
   grid-column: 1 / -1;
-  background: var(--surface); border-bottom: 1px solid var(--border);
-  display: flex; align-items: center; padding: 0 20px; gap: 12px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 16px;
 }
-header .logo { font-family: var(--mono); font-size: 13px; color: var(--accent); letter-spacing: 0.04em; }
-header .subtitle { font-size: 12px; color: var(--muted); }
-header .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: pulse 2s ease-in-out infinite; }
-@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.header-logo {
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  box-shadow: var(--shadow-glow);
+}
+.header-title {
+  font-size: 18px;
+  font-weight: 700;
+  background: linear-gradient(90deg, var(--accent), var(--accent-secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: 0.02em;
+}
+.header-subtitle {
+  font-size: 12px;
+  color: var(--text-muted);
+  padding-left: 16px;
+  border-left: 1px solid var(--border);
+}
+.header-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 12px;
+}
+.header-link {
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 13px;
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.header-link:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
 .left-panel {
-  background: var(--surface); border-right: 1px solid var(--border);
-  display: flex; flex-direction: column; overflow: hidden;
+  background: var(--bg-secondary);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 20px;
+  gap: 20px;
 }
-.section-title {
-  font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
-  padding: 14px 16px 8px;
+.panel-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
-.prompt-box { padding: 0 12px 12px; display: flex; flex-direction: column; gap: 8px; }
-.prompt-hint { font-size: 10px; color: var(--muted); margin-bottom: 2px; }
+.panel-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.panel-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
 textarea#prompt {
-  background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
-  color: var(--text); font-family: var(--mono); font-size: 11px; line-height: 1.6;
-  padding: 10px 12px; resize: none; height: 160px; outline: none;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.7;
+  padding: 14px 16px;
+  resize: none;
+  height: 180px;
+  outline: none;
+  transition: all 0.2s;
 }
-textarea#prompt:focus { border-color: var(--accent2); }
-.duration-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 2px; }
-.duration-input {
-  width: 58px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
-  color: var(--text); font-family: var(--mono); font-size: 12px; text-align: center; padding: 3px 6px;
-  -moz-appearance: textfield;
+textarea#prompt:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
 }
-.duration-input::-webkit-outer-spin-button, .duration-input::-webkit-inner-spin-button { -webkit-appearance: none; }
-.checkbox-row { display: flex; align-items: center; }
-.checkbox-label { font-size: 11px; color: var(--text); display: flex; align-items: center; gap: 6px; cursor: pointer; }
-.checkbox-label input { width: 14px; height: 14px; accent-color: var(--accent); }
-.local-videos-row { display: flex; flex-direction: column; gap: 6px; padding: 8px 0; }
-.local-video-select {
-  background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
-  color: var(--text); font-family: var(--mono); font-size: 11px; padding: 6px 10px;
+textarea#prompt::placeholder {
+  color: var(--text-muted);
+}
+.input-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.input-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.input-field {
+  width: 80px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  text-align: center;
+  padding: 8px 12px;
+  outline: none;
+  transition: all 0.2s;
+}
+.input-field:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+.checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  transition: all 0.2s;
+}
+.checkbox-item:hover {
+  background: var(--bg-tertiary);
+}
+.checkbox-item input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.checkbox-item span {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.select-field {
   width: 100%;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 13px;
+  padding: 10px 14px;
+  outline: none;
+  cursor: pointer;
+  transition: all 0.2s;
 }
-.btn-run {
-  background: var(--accent); color: #000; border: none; border-radius: var(--radius);
-  font-size: 13px; font-weight: 700; padding: 10px; cursor: pointer;
-  display: flex; align-items: center; justify-content: center; gap: 7px;
+.select-field:focus {
+  border-color: var(--accent);
 }
-.btn-run:hover { opacity: .88; }
-.btn-run:disabled { opacity: .35; cursor: not-allowed; }
-.skip-row { display: flex; gap: 8px; flex-wrap: wrap; }
-.skip-row.hidden { display: none; }
-.openclaw-actions-row { display: flex; flex-direction: column; gap: 10px; padding: 10px 0; border-top: 1px solid var(--border); margin-top: 6px; }
-.openclaw-actions-row.hidden { display: none; }
-.openclaw-actions-row .action-group { display: flex; flex-direction: column; gap: 4px; }
-.openclaw-actions-row .action-label { font-size: 11px; font-weight: 600; color: var(--text); }
-.openclaw-actions-row .action-hint { font-size: 10px; color: var(--muted); }
-.openclaw-actions-row .action-btns { display: flex; gap: 6px; flex-wrap: wrap; }
-.btn-skip { background: var(--border); color: var(--text); border: none; border-radius: 6px; padding: 6px 12px; font-size: 11px; cursor: pointer; }
-.btn-skip:hover { background: #2a3142; }
-.btn-skip.btn-extend { background: rgba(246,201,14,.15); color: var(--warn); }
-.btn-skip.btn-extend:hover { background: rgba(246,201,14,.25); }
-.history-list { flex: 1; overflow-y: auto; padding: 0 8px 12px; }
-.history-item {
-  padding: 9px 10px; border-radius: 8px; cursor: pointer; border: 1px solid transparent; margin-bottom: 4px;
+.select-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
-.history-item:hover { background: rgba(255,255,255,.04); }
-.history-item.active { background: rgba(94,135,255,.1); border-color: var(--accent2); }
-.status-badge { font-size: 10px; padding: 2px 7px; border-radius: 20px; }
-.status-badge.pending { background: rgba(74,85,104,.3); color: var(--muted); }
-.status-badge.running { background: rgba(91,127,255,.18); color: var(--accent2); }
-.status-badge.done { background: rgba(62,207,142,.15); color: var(--accent); }
-.status-badge.error { background: rgba(255,92,92,.15); color: var(--err); }
-.right-panel { display: flex; flex-direction: column; overflow: hidden; padding: 16px; gap: 14px; }
-.steps-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
-.step-card {
-  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 12px 14px; display: flex; align-items: center; gap: 10px; position: relative;
+.select-label {
+  font-size: 11px;
+  color: var(--text-muted);
 }
-.step-card::before {
-  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
-  background: var(--step-color, var(--border)); transform: scaleX(0); transition: transform .4s;
+.btn-primary {
+  background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+  color: white;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 14px 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: all 0.3s;
+  box-shadow: var(--shadow-glow);
 }
-.step-card.running::before { transform: scaleX(1); animation: progress-bar 1.5s ease-in-out infinite alternate; }
-.step-card.done::before { transform: scaleX(1); }
-@keyframes progress-bar { from { transform: scaleX(0.1); } to { transform: scaleX(1); } }
-.step-card[data-step="script"] { --step-color: var(--step-script); }
-.step-card[data-step="storyboard"] { --step-color: var(--step-storyboard); }
-.step-card[data-step="openclaw"] { --step-color: var(--step-openclaw); }
-.step-card[data-step="pipeline"] { --step-color: #e056fd; }
-.body-row { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; min-height: 0; }
-.panel {
-  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
-  display: flex; flex-direction: column; overflow: hidden;
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px var(--accent-glow);
 }
-.panel-header {
-  padding: 10px 14px; border-bottom: 1px solid var(--border);
-  font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted);
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
-.log-body { flex: 1; overflow-y: auto; padding: 10px 14px; font-family: var(--mono); font-size: 11px; line-height: 1.7; }
-.log-line { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 2px; }
-.log-ts { color: var(--muted); flex-shrink: 0; font-size: 10px; }
-.log-step-tag { font-size: 9px; padding: 1px 5px; border-radius: 3px; flex-shrink: 0; }
-.log-msg { color: var(--text); word-break: break-all; }
-.log-line.step-storyboard .log-step-tag { background: rgba(246,201,14,.15); color: var(--step-storyboard); }
-.log-line.step-openclaw .log-step-tag { background: rgba(62,207,142,.15); color: var(--step-openclaw); }
-.log-line.step-done .log-step-tag { background: rgba(62,207,142,.15); color: var(--accent); }
-.log-line.step-error .log-step-tag { background: rgba(255,92,92,.15); color: var(--err); }
-.log-line.step-error .log-msg { color: var(--err); }
-.results-body { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
-.result-block { display: flex; flex-direction: column; gap: 6px; }
-.result-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
-.script-preview {
-  background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px;
-  font-family: var(--mono); font-size: 11px; line-height: 1.7; white-space: pre-wrap; max-height: 140px; overflow-y: auto;
+.btn-secondary {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: all 0.2s;
 }
-.recording-preview {
-  background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px;
-  font-family: var(--mono); font-size: 11px; line-height: 1.7; white-space: pre-wrap; max-height: 140px; overflow-y: auto;
+.btn-secondary:hover {
+  background: var(--border);
+  color: var(--text-primary);
 }
-.openclaw-reply {
-  background: rgba(62,207,142,.08); border: 1px solid rgba(62,207,142,.25); border-radius: 6px;
-  padding: 10px 12px; font-size: 12px; color: var(--accent);
+.openclaw-panel {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  display: none;
 }
-.empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--muted); gap: 8px; padding: 40px; text-align: center; }
-.spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid rgba(255,255,255,.15); border-top-color: var(--accent2); border-radius: 50%; animation: spin .7s linear infinite; }
+.openclaw-panel.visible {
+  display: block;
+  animation: slideDown 0.3s ease;
+}
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.openclaw-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.openclaw-title::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  background: var(--warning);
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.openclaw-btns {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.right-panel {
+  background: var(--bg-secondary);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 20px;
+  gap: 16px;
+}
+.steps-container {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+.step-item {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s;
+}
+.step-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--step-color, var(--border));
+  transform: scaleX(0);
+  transition: transform 0.4s ease;
+}
+.step-item.active::before {
+  transform: scaleX(1);
+}
+.step-item.completed::before {
+  transform: scaleX(1);
+  background: var(--success);
+}
+.step-item.error::before {
+  transform: scaleX(1);
+  background: var(--error);
+}
+.step-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: var(--bg-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+  transition: all 0.3s;
+}
+.step-item.active .step-icon {
+  background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+  box-shadow: var(--shadow-glow);
+}
+.step-item.completed .step-icon {
+  background: var(--success);
+}
+.step-content {
+  flex: 1;
+  min-width: 0;
+}
+.step-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+.step-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.main-content {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  min-height: 0;
+}
+.content-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.panel-title {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+.log-entry {
+  display: flex;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  animation: fadeIn 0.2s ease;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateX(-5px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.log-time {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  width: 70px;
+}
+.log-tag {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  font-weight: 500;
+}
+.log-tag.script { background: rgba(167, 139, 250, 0.2); color: var(--accent-secondary); }
+.log-tag.storyboard { background: rgba(251, 191, 36, 0.2); color: var(--warning); }
+.log-tag.openclaw { background: rgba(34, 211, 238, 0.2); color: var(--accent); }
+.log-tag.pipeline { background: rgba(124, 58, 237, 0.2); color: var(--accent-secondary); }
+.log-tag.done { background: rgba(52, 211, 153, 0.2); color: var(--success); }
+.log-tag.error { background: rgba(248, 113, 113, 0.2); color: var(--error); }
+.log-message {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-secondary);
+  word-break: break-all;
+}
+.empty-state {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  gap: 12px;
+  text-align: center;
+  padding: 40px;
+}
+.empty-icon {
+  font-size: 48px;
+  opacity: 0.3;
+}
+.result-card {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  margin-bottom: 12px;
+}
+.result-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.result-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.result-content {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  max-height: 120px;
+  overflow-y: auto;
+}
+.result-content pre {
+  white-space: pre-wrap;
+  margin: 0;
+}
+.result-media {
+  width: 100%;
+  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+}
+.download-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--accent);
+  text-decoration: none;
+  transition: all 0.2s;
+}
+.download-btn:hover {
+  color: var(--text-primary);
+}
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,0.2);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
 @keyframes spin { to { transform: rotate(360deg); } }
-a.download-link { font-size: 11px; color: var(--accent2); text-decoration: none; }
-a.download-link:hover { text-decoration: underline; }
+.history-section {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.history-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+.history-item {
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  border: 1px solid transparent;
+  margin-bottom: 6px;
+  transition: all 0.2s;
+}
+.history-item:hover {
+  background: var(--bg-tertiary);
+}
+.history-item.active {
+  background: rgba(34, 211, 238, 0.1);
+  border-color: var(--accent);
+}
+.history-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  margin-bottom: 6px;
+}
+.history-status.pending { background: rgba(100, 116, 139, 0.2); color: var(--text-muted); }
+.history-status.running { background: rgba(34, 211, 238, 0.2); color: var(--accent); }
+.history-status.done { background: rgba(52, 211, 153, 0.2); color: var(--success); }
+.history-status.error { background: rgba(248, 113, 113, 0.2); color: var(--error); }
+.history-prompt {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.history-time {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 4px;
+  font-family: var(--font-mono);
+}
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-tertiary); border-radius: 3px; }
+::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
 </style>
 </head>
 <body>
 <div class="app">
   <header>
-    <div class="dot"></div>
-    <span class="logo">AI VIDEO WORKFLOW</span>
-    <span class="subtitle">仪表盘 · 创作提示词→文稿→音频→分镜→录屏→合成</span>
-    <a href="/recording" style="margin-left:auto;color:var(--muted);font-size:12px;text-decoration:none">录屏先行 →</a>
-  </header>
-  <aside class="left-panel">
-    <div class="section-title">创作提示词</div>
-    <div class="prompt-box">
-      <label for="prompt" class="prompt-hint">留空使用默认（Ezpro/加密货币）· 或输入自定义提示词</label>
-      <textarea id="prompt" placeholder="例如：生成关于 BTC 技术分析的 3 分钟口播稿，结合 CoinGlass 爆仓数据；或针对 15-win 挑战的推广脚本…"></textarea>
-      <div class="duration-row">
-        <span style="font-size:11px">文稿目标时长（分钟）</span>
-        <input type="number" id="target-duration" class="duration-input" value="3" min="1" max="30" />
-      </div>
-      <div class="duration-row">
-        <span style="font-size:11px">OpenClaw 超时（秒）</span>
-        <input type="number" id="openclaw-timeout" class="duration-input" value="600" min="10" max="3600" />
-      </div>
-      <div class="checkbox-row">
-        <label class="checkbox-label"><input type="checkbox" id="wait-openclaw" checked /> 等待 OpenClaw 回复</label>
-      </div>
-      <div class="checkbox-row">
-        <label class="checkbox-label"><input type="checkbox" id="use-local-videos" /> 使用本地视频（跳过 OpenClaw）</label>
-      </div>
-      <div class="local-videos-row">
-        <label style="font-size:10px;color:var(--muted)">数字人视频（文件夹，合成该文件夹内所有片段）</label>
-        <select id="local-digital-human" class="local-video-select"></select>
-        <label style="font-size:10px;color:var(--muted)">卡通头部视频</label>
-        <select id="local-cartoon-head" class="local-video-select"></select>
-        <label style="font-size:10px;color:var(--muted)">录屏视频</label>
-        <select id="local-recording" class="local-video-select"></select>
-      </div>
-      <div class="openclaw-actions-row hidden" id="openclawActionsRow">
-        <div class="action-group">
-          <span class="action-label">1. 等待 OpenClaw 回复</span>
-          <span class="action-hint">默认行为，继续等待</span>
-        </div>
-        <div class="action-group">
-          <span class="action-label">2. 选择本地视频</span>
-          <div class="action-btns">
-            <button class="btn-skip" id="skipLatest">使用最新视频</button>
-            <button class="btn-skip" id="skipFile">指定文件名</button>
-          </div>
-        </div>
-        <div class="action-group">
-          <span class="action-label">3. 未完成，再等待 60s</span>
-          <button class="btn-skip btn-extend" id="extendWait">再等 60 秒</button>
-        </div>
-      </div>
-      <button class="btn-run" id="btn-run">
-        <span id="btn-icon">▶</span>
-        <span id="btn-text">开始生成</span>
-      </button>
+    <div class="header-brand">
+      <div class="header-logo">🎬</div>
+      <span class="header-title">AI Video Studio</span>
+      <span class="header-subtitle">智能数字人视频生成平台</span>
     </div>
-    <div class="section-title">历史任务</div>
-    <div class="history-list" id="history-list"></div>
+    <div class="header-actions">
+      <a href="/recording" class="header-link">
+        <span>📹</span> 录屏先行
+      </a>
+    </div>
+  </header>
+  
+  <aside class="left-panel">
+    <div class="panel-section">
+      <div class="panel-label">创作提示词</div>
+      <textarea id="prompt" placeholder="输入视频主题或内容描述，例如：&#10;• 生成关于比特币技术分析的3分钟口播稿&#10;• 介绍 Ezpro 平台使用方法&#10;• 加密货币市场日报解读"></textarea>
+    </div>
+    
+    <div class="panel-section">
+      <div class="input-row">
+        <span class="input-label">目标时长（分钟）</span>
+        <input type="number" id="target-duration" class="input-field" value="3" min="1" max="30" />
+      </div>
+    </div>
+    
+    <div class="panel-section">
+      <div class="input-row">
+        <span class="input-label">OpenClaw 超时（秒）</span>
+        <input type="number" id="openclaw-timeout" class="input-field" value="600" min="10" max="3600" />
+      </div>
+    </div>
+    
+    <div class="panel-section">
+      <div class="checkbox-group">
+        <label class="checkbox-item">
+          <input type="checkbox" id="wait-openclaw" checked />
+          <span>等待 OpenClaw 回复</span>
+        </label>
+        <label class="checkbox-item">
+          <input type="checkbox" id="use-local-videos" />
+          <span>使用本地视频（跳过 OpenClaw）</span>
+        </label>
+      </div>
+    </div>
+    
+    <div class="panel-section select-group" id="localVideosSection" style="display: none;">
+      <div class="select-label">数字人视频（文件夹）</div>
+      <select id="local-digital-human" class="select-field"></select>
+      <div class="select-label">卡通头部视频</div>
+      <select id="local-cartoon-head" class="select-field"></select>
+      <div class="select-label">录屏视频</div>
+      <select id="local-recording" class="select-field"></select>
+    </div>
+    
+    <div class="openclaw-panel" id="openclawPanel">
+      <div class="openclaw-title">等待 OpenClaw 响应</div>
+      <div class="openclaw-btns">
+        <button class="btn-secondary" id="skipLatest">使用最新视频</button>
+        <button class="btn-secondary" id="skipFile">指定文件</button>
+        <button class="btn-secondary" id="extendWait">再等 60s</button>
+      </div>
+    </div>
+    
+    <button class="btn-primary" id="btn-run">
+      <span id="btn-icon">▶</span>
+      <span id="btn-text">开始生成</span>
+    </button>
+    
+    <div class="history-section">
+      <div class="panel-label">历史任务</div>
+      <div class="history-list" id="history-list"></div>
+    </div>
   </aside>
+  
   <main class="right-panel">
-    <div class="steps-bar">
-      <div class="step-card" data-step="script" id="step-script">
+    <div class="steps-container">
+      <div class="step-item" data-step="script">
         <div class="step-icon">📝</div>
-        <div class="step-info">
-          <div class="step-name">文稿+音频</div>
+        <div class="step-content">
+          <div class="step-title">文稿 + 音频</div>
           <div class="step-desc" id="step-script-desc">等待开始</div>
         </div>
       </div>
-      <div class="step-card" data-step="storyboard" id="step-storyboard">
+      <div class="step-item" data-step="storyboard">
         <div class="step-icon">🎬</div>
-        <div class="step-info">
-          <div class="step-name">分镜生成</div>
+        <div class="step-content">
+          <div class="step-title">分镜生成</div>
           <div class="step-desc" id="step-storyboard-desc">等待开始</div>
         </div>
       </div>
-      <div class="step-card" data-step="openclaw" id="step-openclaw">
+      <div class="step-item" data-step="openclaw">
         <div class="step-icon">🖥</div>
-        <div class="step-info">
-          <div class="step-name">OpenClaw</div>
+        <div class="step-content">
+          <div class="step-title">OpenClaw 录屏</div>
           <div class="step-desc" id="step-openclaw-desc">等待开始</div>
         </div>
       </div>
-      <div class="step-card" data-step="pipeline" id="step-pipeline">
+      <div class="step-item" data-step="pipeline">
         <div class="step-icon">🎞</div>
-        <div class="step-info">
-          <div class="step-name">视频合成</div>
+        <div class="step-content">
+          <div class="step-title">视频合成</div>
           <div class="step-desc" id="step-pipeline-desc">等待开始</div>
         </div>
       </div>
     </div>
-    <div class="body-row">
-      <div class="panel">
-        <div class="panel-header">
+    
+    <div class="main-content">
+      <div class="content-panel">
+        <div class="panel-title">
           <span>实时日志</span>
           <span id="log-spinner" style="display:none"><span class="spinner"></span></span>
         </div>
-        <div class="log-body" id="log-body">
+        <div class="panel-body" id="log-body">
           <div class="empty-state">
-            <div style="font-size:36px;opacity:.3">⏳</div>
-            <p>启动工作流后，<br>实时日志将在这里显示。</p>
+            <div class="empty-icon">📋</div>
+            <p>启动工作流后，实时日志将在这里显示</p>
           </div>
         </div>
       </div>
-      <div class="panel">
-        <div class="panel-header">产物预览</div>
-        <div class="results-body" id="results-body">
+      
+      <div class="content-panel">
+        <div class="panel-title">产物预览</div>
+        <div class="panel-body" id="results-body">
           <div class="empty-state">
-            <div style="font-size:36px;opacity:.3">🗂</div>
-            <p>工作流完成后，<br>生成的文稿、分镜、录屏指令<br>将在这里展示。</p>
+            <div class="empty-icon">🎁</div>
+            <p>工作流完成后，产物将在这里展示</p>
           </div>
         </div>
       </div>
     </div>
   </main>
 </div>
+
 <script>
 let activeJobId = null;
 let evtSource = null;
@@ -280,8 +752,10 @@ function esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-
 async function loadLocalVideoSelects() {
+  const useLocalVideos = document.getElementById('use-local-videos').checked;
+  document.getElementById('localVideosSection').style.display = useLocalVideos ? 'flex' : 'none';
+  
   try {
     const [videosRes, defaultsRes] = await Promise.all([fetch('/api/local-videos'), fetch('/api/local-video-defaults')]);
     if (!videosRes.ok || !defaultsRes.ok) return;
@@ -306,9 +780,10 @@ async function loadLocalVideoSelects() {
   } catch (_) {}
 }
 
+document.getElementById('use-local-videos').addEventListener('change', loadLocalVideoSelects);
+
 async function startJob() {
   const prompt = document.getElementById('prompt').value.trim();
-  // 留空时后端使用默认提示词，无需拦截
   const timeout = parseInt(document.getElementById('openclaw-timeout').value, 10) || 600;
   const targetDuration = parseInt(document.getElementById('target-duration').value, 10) || 3;
   const waitOpenclaw = document.getElementById('wait-openclaw').checked;
@@ -316,10 +791,12 @@ async function startJob() {
   const localDigitalHuman = document.getElementById('local-digital-human').value.trim() || null;
   const localCartoonHead = document.getElementById('local-cartoon-head').value.trim() || null;
   const localRecording = document.getElementById('local-recording').value.trim() || null;
+  
   document.getElementById('btn-run').disabled = true;
-  document.getElementById('btn-icon').innerHTML = '<span class="spinner" style="border-top-color:#000"></span>';
-  document.getElementById('btn-text').textContent = '生成中…';
+  document.getElementById('btn-icon').innerHTML = '<span class="spinner" style="border-top-color:#fff"></span>';
+  document.getElementById('btn-text').textContent = '生成中...';
   resetUI();
+  
   try {
     const res = await fetch('/api/jobs', {
       method: 'POST',
@@ -349,14 +826,16 @@ async function startJob() {
 async function selectJob(jobId) {
   if (evtSource) { evtSource.close(); evtSource = null; }
   activeJobId = jobId;
-    document.getElementById('openclawActionsRow').classList.add('hidden');
+  document.getElementById('openclawPanel').classList.remove('visible');
   document.getElementById('log-spinner').style.display = '';
+  
   try {
     const res = await fetch('/api/jobs/' + jobId);
     if (!res.ok) return;
     const job = await res.json();
     ['script','storyboard','openclaw','pipeline'].forEach(s => setStepState(s, job.steps?.[s] || 'pending'));
     (job.logs || []).forEach(e => appendLog({ step: e.step || 'info', msg: e.text || e.msg }));
+    
     if (job.status === 'done') {
       renderArtifacts(job);
       document.getElementById('btn-run').disabled = false;
@@ -370,7 +849,7 @@ async function selectJob(jobId) {
       document.getElementById('log-spinner').style.display = 'none';
     } else {
       if (job.status === 'running') {
-        document.getElementById('openclawActionsRow').classList.remove('hidden');
+        document.getElementById('openclawPanel').classList.add('visible');
       }
       subscribeSSE(jobId);
     }
@@ -383,31 +862,35 @@ function subscribeSSE(jobId) {
   evtSource.onmessage = (e) => {
     const d = JSON.parse(e.data);
     appendLog({ step: d.step || 'info', msg: d.msg || d.text });
+    
     if (d.step === 'script' || d.step === 'storyboard') {
-      setStepState('script', d.step === 'script' ? 'running' : 'done');
-      setStepState('storyboard', d.step === 'storyboard' ? 'running' : 'done');
+      setStepState('script', d.step === 'script' ? 'active' : 'completed');
+      setStepState('storyboard', d.step === 'storyboard' ? 'active' : 'completed');
       const el = document.getElementById('step-storyboard-desc');
-      if (el && d.step === 'storyboard') el.textContent = (d.msg || '').slice(0, 35);
+      if (el && d.step === 'storyboard') el.textContent = (d.msg || '').slice(0, 40);
       fetch('/api/jobs/' + jobId).then(r => r.ok ? r.json() : null).then(j => { if (j && j.artifacts) renderArtifacts(j); });
     }
+    
     if (d.step === 'openclaw') {
-      setStepState('openclaw', 'running');
-      document.getElementById('openclawActionsRow').classList.remove('hidden');
+      setStepState('openclaw', 'active');
+      document.getElementById('openclawPanel').classList.add('visible');
       fetch('/api/jobs/' + jobId).then(r => r.ok ? r.json() : null).then(j => { if (j && j.artifacts) renderArtifacts(j); });
     }
+    
     if (d.step === 'pipeline') {
-      setStepState('pipeline', d.msg && d.msg.includes('失败') ? 'pending' : 'running');
+      setStepState('pipeline', d.msg && d.msg.includes('失败') ? 'pending' : 'active');
       fetch('/api/jobs/' + jobId).then(r => r.ok ? r.json() : null).then(j => { if (j && j.artifacts) renderArtifacts(j); });
     }
-    if (/视频合成完成/.test(d.msg || '')) { setStepState('pipeline', 'done'); fetch('/api/jobs/' + jobId).then(r => r.ok ? r.json() : null).then(j => { if (j) renderArtifacts(j); }); }
+    
+    if (/视频合成完成/.test(d.msg || '')) { setStepState('pipeline', 'completed'); fetch('/api/jobs/' + jobId).then(r => r.ok ? r.json() : null).then(j => { if (j) renderArtifacts(j); }); }
     if (/跳过视频合成|未在 video_shoot/.test(d.msg || '')) setStepState('pipeline', 'pending');
     if (/文稿已保存|音频已保存|分镜解析成功|输出目录已创建/.test(d.msg || '')) {
       fetch('/api/jobs/' + jobId).then(r => r.ok ? r.json() : null).then(j => { if (j && j.artifacts) renderArtifacts(j); });
     }
     if (/完成|OpenClaw 回复/.test(d.msg || '') || d.step === 'done') {
-      setStepState('openclaw', 'done');
-      setStepState('storyboard', 'done');
-      setStepState('script', 'done');
+      setStepState('openclaw', 'completed');
+      setStepState('storyboard', 'completed');
+      setStepState('script', 'completed');
       fetch('/api/jobs/' + jobId).then(r => r.ok ? r.json() : null).then(j => { if (j) renderArtifacts(j); });
     }
     if (d.step === 'error') {
@@ -433,21 +916,30 @@ function appendLog(entry) {
   const body = document.getElementById('log-body');
   const empty = body.querySelector('.empty-state');
   if (empty) empty.remove();
-  const ts = entry.ts ? new Date(entry.ts).toLocaleTimeString('zh-CN', { hour12: false }) : '';
+  
+  const time = entry.ts ? new Date(entry.ts).toLocaleTimeString('zh-CN', { hour12: false }) : '';
+  const step = entry.step || 'info';
+  
   const div = document.createElement('div');
-  div.className = 'log-line step-' + (entry.step || 'info');
-  div.innerHTML = '<span class="log-ts">' + ts + '</span><span class="log-step-tag">' + (entry.step || 'INFO').toUpperCase() + '</span><span class="log-msg">' + esc(entry.msg || '') + '</span>';
+  div.className = 'log-entry';
+  div.innerHTML = `
+    <span class="log-time">${time}</span>
+    <span class="log-tag ${step}">${step.toUpperCase()}</span>
+    <span class="log-message">${esc(entry.msg || '')}</span>
+  `;
   body.appendChild(div);
   body.scrollTop = body.scrollHeight;
 }
 
 function setStepState(step, status) {
-  const card = document.getElementById('step-' + step);
+  const card = document.querySelector('.step-item[data-step="' + step + '"]');
   if (!card) return;
-  card.classList.remove('pending','running','done','error');
+  card.classList.remove('pending', 'active', 'completed', 'error');
   card.classList.add(status);
+  
   const icon = card.querySelector('.step-icon');
-  if (icon) icon.textContent = { pending: '○', running: '⚙️', done: '✅', error: '❌' }[status] || '○';
+  const icons = { pending: '○', active: '⚡', completed: '✓', error: '✕' };
+  if (icon) icon.textContent = icons[status] || '○';
 }
 
 function renderArtifacts(job) {
@@ -455,45 +947,75 @@ function renderArtifacts(job) {
   body.innerHTML = '';
   const a = job.artifacts || {};
   const folder = a.folder;
+  
   if (!folder) {
-    body.innerHTML = '<div class="empty-state"><p>暂无产物</p></div>';
+    body.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><p>暂无产物</p></div>';
     return;
   }
+  
   if (a.script) {
     const block = document.createElement('div');
-    block.className = 'result-block';
-    block.innerHTML = '<div class="result-label">📝 口播文稿</div><div class="script-preview">已保存</div><a class="download-link" href="/api/files/' + folder + '/script.txt" download>下载 script.txt</a>';
+    block.className = 'result-card';
+    block.innerHTML = `
+      <div class="result-header"><span class="result-title">📝 口播文稿</span></div>
+      <div class="result-content"><pre>已保存 (${(a.script.length || 0)} 字符)</pre></div>
+      <a class="download-btn" href="/api/files/${folder}/script.txt" download>⬇ 下载 script.txt</a>
+    `;
     body.appendChild(block);
   }
+  
   if (a.audio) {
     const block = document.createElement('div');
-    block.className = 'result-block';
-    block.innerHTML = '<div class="result-label">🔊 音频</div><audio controls style="width:100%;max-height:60px"><source src="/api/files/' + folder + '/audio.mp3" type="audio/mpeg"></audio><a class="download-link" href="/api/files/' + folder + '/audio.mp3" download>下载 audio.mp3</a>';
+    block.className = 'result-card';
+    block.innerHTML = `
+      <div class="result-header"><span class="result-title">🔊 音频文件</span></div>
+      <audio controls class="result-media"><source src="/api/files/${folder}/audio.mp3" type="audio/mpeg"></audio>
+      <a class="download-btn" href="/api/files/${folder}/audio.mp3" download>⬇ 下载 audio.mp3</a>
+    `;
     body.appendChild(block);
   }
+  
   if (a.storyboard && a.shots) {
     const shots = a.shots;
-    const rows = shots.map(s => '<tr><td>' + (s.id || '-') + '</td><td>' + (s.start_sec || 0) + 's</td><td>' + (s.end_sec || 0) + 's</td><td>' + esc(s.source || '-') + '</td><td title="' + esc(s.url||'') + '">' + esc((s.url||'').slice(0,40)) + '</td></tr>').join('');
+    const rows = shots.map(s => `<tr><td>${s.id || '-'}</td><td>${s.start_sec || 0}s</td><td>${s.end_sec || 0}s</td><td>${esc(s.source || '-')}</td></tr>`).join('');
     const block = document.createElement('div');
-    block.className = 'result-block';
-    block.innerHTML = '<div class="result-label">🎬 分镜表 (' + shots.length + ' 个)</div><div class="script-preview" style="max-height:120px;overflow:auto"><table style="width:100%;font-size:10px;border-collapse:collapse"><tr><th>#</th><th>开始</th><th>结束</th><th>来源</th><th>URL</th></tr>' + rows + '</table></div><a class="download-link" href="/api/files/' + folder + '/storyboard.txt" download>下载 storyboard.txt</a>';
+    block.className = 'result-card';
+    block.innerHTML = `
+      <div class="result-header"><span class="result-title">🎬 分镜表 (${shots.length} 个)</span></div>
+      <div class="result-content" style="max-height:150px;overflow:auto">
+        <table style="width:100%;font-size:11px;border-collapse:collapse">
+          <tr><th>#</th><th>开始</th><th>结束</th><th>来源</th></tr>
+          ${rows}
+        </table>
+      </div>
+      <a class="download-btn" href="/api/files/${folder}/storyboard.txt" download>⬇ 下载 storyboard.txt</a>
+    `;
     body.appendChild(block);
   }
+  
   if (a.recording_task) {
     fetch('/api/files/' + folder + '/recording_task.txt').then(r => r.text()).then(text => {
       const block = document.createElement('div');
-      block.className = 'result-block';
-      let html = '<div class="result-label">🖥 录屏指令</div><div class="script-preview">' + esc(text).slice(0, 800) + '</div>';
-      if (a.openclaw_reply) html += '<div class="openclaw-reply">✅ OpenClaw 回复：' + esc(a.openclaw_reply) + '</div>';
-      html += '<a class="download-link" href="/api/files/' + folder + '/recording_task.txt" download>下载 recording_task.txt</a>';
+      block.className = 'result-card';
+      let html = `
+        <div class="result-header"><span class="result-title">🖥 录屏指令</span></div>
+        <div class="result-content"><pre>${esc(text).slice(0, 600)}</pre></div>
+      `;
+      if (a.openclaw_reply) html += `<div style="margin-top:8px;padding:10px;background:rgba(52,211,153,0.1);border-radius:6px;font-size:12px;color:var(--success)">✅ OpenClaw: ${esc(a.openclaw_reply)}</div>`;
+      html += `<a class="download-btn" href="/api/files/${folder}/recording_task.txt" download>⬇ 下载 recording_task.txt</a>`;
       block.innerHTML = html;
       body.appendChild(block);
     });
   }
+  
   if (a.final_video) {
     const block = document.createElement('div');
-    block.className = 'result-block';
-    block.innerHTML = '<div class="result-label">🎞 最终视频</div><video controls style="width:100%;max-height:200px;border-radius:6px"><source src="/api/files/' + folder + '/final.mp4" type="video/mp4"></video><a class="download-link" href="/api/files/' + folder + '/final.mp4" download>下载 final.mp4</a>';
+    block.className = 'result-card';
+    block.innerHTML = `
+      <div class="result-header"><span class="result-title">🎞 最终视频</span></div>
+      <video controls class="result-media"><source src="/api/files/${folder}/final.mp4" type="video/mp4"></video>
+      <a class="download-btn" href="/api/files/${folder}/final.mp4" download>⬇ 下载 final.mp4</a>
+    `;
     body.appendChild(block);
   }
 }
@@ -505,24 +1027,34 @@ async function refreshHistory() {
     const jobs = await res.json();
     const list = document.getElementById('history-list');
     list.innerHTML = '';
+    
     if (!jobs.length) {
-      list.innerHTML = '<div style="padding:10px 12px;color:var(--muted);font-size:11px">暂无任务</div>';
+      list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px">暂无任务记录</div>';
       return;
     }
+    
     jobs.forEach(job => {
       const el = document.createElement('div');
       el.className = 'history-item' + (job.id === activeJobId ? ' active' : '');
       el.onclick = () => selectJob(job.id);
-      const t = new Date(job.created_at).toLocaleTimeString('zh-CN', { hour12: false, hour: '2-digit', minute: '2-digit' });
-      el.innerHTML = '<div style="margin-bottom:3px"><span class="status-badge ' + job.status + '">' + { pending: '待运行', running: '运行中', done: '完成', error: '失败' }[job.status] + '</span> <span style="font-size:10px;color:var(--muted);font-family:var(--mono)">' + t + '</span></div><div style="font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(job.prompt || '') + '</div>';
+      
+      const time = new Date(job.created_at);
+      const timeStr = time.toLocaleDateString('zh-CN') + ' ' + time.toLocaleTimeString('zh-CN', { hour12: false, hour: '2-digit', minute: '2-digit' });
+      const statusMap = { pending: '待运行', running: '运行中', done: '已完成', error: '失败' };
+      
+      el.innerHTML = `
+        <div class="history-status ${job.status}">${statusMap[job.status]}</div>
+        <div class="history-prompt">${esc(job.prompt || '默认任务')}</div>
+        <div class="history-time">${timeStr}</div>
+      `;
       list.appendChild(el);
     });
   } catch (_) {}
 }
 
 function resetUI() {
-  document.getElementById('log-body').innerHTML = '<div class="empty-state"><div style="font-size:36px;opacity:.3">⏳</div><p>实时日志将在这里显示。</p></div>';
-  document.getElementById('results-body').innerHTML = '<div class="empty-state"><div style="font-size:36px;opacity:.3">🗂</div><p>工作流完成后，产物将在这里展示。</p></div>';
+  document.getElementById('log-body').innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><p>实时日志将在这里显示</p></div>';
+  document.getElementById('results-body').innerHTML = '<div class="empty-state"><div class="empty-icon">🎁</div><p>工作流完成后，产物将在这里展示</p></div>';
   ['script','storyboard','openclaw','pipeline'].forEach(s => {
     setStepState(s, 'pending');
     const desc = document.getElementById('step-' + s + '-desc');
@@ -535,27 +1067,31 @@ document.getElementById('skipLatest').onclick = async () => {
   if (!activeJobId) return;
   try {
     await fetch('/api/jobs/' + activeJobId + '/skip-openclaw', { method: 'POST' });
-    appendLog({ step: 'info', msg: '✓ 已选择使用最新视频继续' });
+    appendLog({ step: 'openclaw', msg: '✓ 已选择使用最新视频继续' });
   } catch (e) { appendLog({ step: 'error', msg: '操作失败: ' + e.message }); }
 };
 document.getElementById('skipFile').onclick = async () => {
   if (!activeJobId) return;
-  const fn = prompt('输入文件名（如 xxx.mp4，需在 video_shoot 文件夹中）：');
+  const fn = prompt('输入文件名（如 xxx.mp4）：');
   if (fn == null || !fn.trim()) return;
   try {
     await fetch('/api/jobs/' + activeJobId + '/skip-openclaw?filename=' + encodeURIComponent(fn.trim()), { method: 'POST' });
-    appendLog({ step: 'info', msg: '✓ 已选择使用指定文件「' + fn.trim() + '」继续' });
+    appendLog({ step: 'openclaw', msg: '✓ 已选择文件: ' + fn.trim() });
   } catch (e) { appendLog({ step: 'error', msg: '操作失败: ' + e.message }); }
 };
 document.getElementById('extendWait').onclick = async () => {
   if (!activeJobId) return;
   try {
     await fetch('/api/jobs/' + activeJobId + '/extend-openclaw', { method: 'POST' });
-    appendLog({ step: 'info', msg: '✓ 已延长 60 秒，继续等待 OpenClaw 回复' });
+    appendLog({ step: 'openclaw', msg: '✓ 已延长 60 秒等待' });
   } catch (e) { appendLog({ step: 'error', msg: '操作失败: ' + e.message }); }
 };
 
-document.addEventListener('DOMContentLoaded', () => { loadLocalVideoSelects(); refreshHistory(); setInterval(refreshHistory, 5000); });
+document.addEventListener('DOMContentLoaded', () => {
+  loadLocalVideoSelects();
+  refreshHistory();
+  setInterval(refreshHistory, 5000);
+});
 </script>
 </body>
 </html>
