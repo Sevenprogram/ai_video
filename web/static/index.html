@@ -662,6 +662,13 @@ textarea#prompt::placeholder {
       <div class="select-label">卡通头部视频</div>
       <select id="local-cartoon-head" class="select-field"></select>
     </div>
+
+    <div class="panel-section select-group">
+      <div class="select-label">TTS 音色</div>
+      <select id="voice-id" class="select-field">
+        <option value="">加载中...</option>
+      </select>
+    </div>
     
     <div class="panel-section select-group" id="localRecordingSection" style="display: none;">
       <div class="select-label">录屏视频（勾选「使用本地录屏」时选用）</div>
@@ -785,6 +792,52 @@ async function loadLocalVideoSelects() {
 
 document.getElementById('use-local-videos').addEventListener('change', loadLocalVideoSelects);
 
+async function loadVoiceSelect() {
+  try {
+    const res = await fetch('/api/elevenlabs-voices');
+    if (!res.ok) return;
+    const data = await res.json();
+    const voices = data.voices || [];
+    const defaultVoiceId = data.default_voice_id || '';
+    const sel = document.getElementById('voice-id');
+    if (!sel) return;
+
+    // 标签映射为中文
+    const labelMap = {
+      accent: { american: '美式', british: '英式', australian: '澳式', indian: '印式', irish: '爱尔兰', scottish: '苏格兰' },
+      gender: { male: '男', female: '女', neutral: '中性' },
+      age: { young: '年轻', middle_aged: '中年', old: '老年' },
+      use_case: { conversational: '对话', narration: '旁白', entertainment_tv: '娱乐节目', social_media: '社交媒体', characters: '角色', advertisement: '广告', news: '新闻', podcast: '播客', audiobook: '有声书' },
+      descriptive: { calm: '平静', energetic: '活力', warm: '温暖', professional: '专业', sassy: '时尚', classy: '优雅', quirky: ' quirky' }
+    };
+
+    function getLabel(key, value) {
+      if (!value) return '';
+      return labelMap[key]?.[value] || value;
+    }
+
+    sel.innerHTML = '<option value="">-- 默认音色 --</option>' + voices.map(v => {
+      const labels = v.labels || {};
+      // 构建标签显示
+      const tags = [];
+      if (labels.gender) tags.push(getLabel('gender', labels.gender));
+      if (labels.accent) tags.push(getLabel('accent', labels.accent));
+      if (labels.age) tags.push(getLabel('age', labels.age));
+      const tagStr = tags.length > 0 ? ' [' + tags.join(' · ') + ']' : '';
+      const selected = v.voice_id === defaultVoiceId ? ' selected' : '';
+      return '<option value="' + esc(v.voice_id) + '"' + selected + ' data-preview="' + esc(v.preview_url || '') + '" data-name="' + esc(v.name) + '" data-labels=\'' + JSON.stringify(labels) + '\'>' + esc(v.name) + tagStr + '</option>';
+    }).join('');
+
+    sel.addEventListener('change', function() {
+      const previewUrl = this.options[this.selectedIndex]?.dataset?.preview;
+      if (previewUrl) {
+        const audio = new Audio(previewUrl);
+        audio.play().catch(() => {});
+      }
+    });
+  } catch (_) {}
+}
+
 async function startJob() {
   const prompt = document.getElementById('prompt').value.trim();
   const timeout = parseInt(document.getElementById('openclaw-timeout').value, 10) || 600;
@@ -794,7 +847,8 @@ async function startJob() {
   const localDigitalHuman = document.getElementById('local-digital-human').value.trim() || null;
   const localCartoonHead = document.getElementById('local-cartoon-head').value.trim() || null;
   const localRecording = document.getElementById('local-recording').value.trim() || null;
-  
+  const voiceId = document.getElementById('voice-id').value.trim() || null;
+
   document.getElementById('btn-run').disabled = true;
   document.getElementById('btn-icon').innerHTML = '<span class="spinner" style="border-top-color:#fff"></span>';
   document.getElementById('btn-text').textContent = '生成中...';
@@ -813,6 +867,7 @@ async function startJob() {
         local_digital_human: localDigitalHuman,
         local_cartoon_head: localCartoonHead,
         local_recording: localRecording,
+        voice_id: document.getElementById('voice-id').value || null,
       })
     });
     if (!res.ok) throw new Error(await res.text());
@@ -1092,6 +1147,7 @@ document.getElementById('extendWait').onclick = async () => {
 
 document.addEventListener('DOMContentLoaded', () => {
   loadLocalVideoSelects();
+  loadVoiceSelect();
   refreshHistory();
   setInterval(refreshHistory, 5000);
 });

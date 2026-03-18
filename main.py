@@ -33,6 +33,9 @@ _ACTION_CLIPS_DIR = os.path.join(_VIDEO_MODULE_DIR, "action_clips")
 _VIDEO_SHOOT_DIR  = os.path.join(_VIDEO_MODULE_DIR, "video_shoot")
 VIDEO_OUTPUT_DIR  = os.path.join(_VIDEO_MODULE_DIR, "output")  # 最终视频统一保存目录
 
+# 从 video_module 导入工具函数
+from video_module.core.ffmpeg_fast import _get_media_duration
+
 
 # --------------------------------------------------------------------------- #
 # 工具函数
@@ -296,14 +299,26 @@ def build_script_prompt(base_prompt: str, duration_minutes: int) -> str:
     approx_words = int(duration_minutes * 130)  # 英文约 130 词/分钟
     duration_block = f"""
 ---
-⚠️ 【时长约束（务必遵守）】
+【重要输出格式要求】
+1. 只输出口播脚本内容，不要输出任何标题、标记、分镜说明
+2. 可以使用的标记：
+   - [pause] 表示 0.5 秒停顿
+   - [silent] 表示 2 秒停顿（如等待页面加载）
+3. 禁止使用的标记/内容：
+   - **(A) Hook**、**(B) Scene**、**(C) Execution** 等分镜标题
+   - **[Data Scene]**、**[Trading Scene]** 等场景标记
+   - **[End]** 结束标记
+   - 任何方括号 [] 开头的中文描述性文字（如 [smacks lips]）
+   - 任何非口播内容的说明文字
+
+【时长约束】
 - 目标视频时长：{duration_minutes} 分钟（{total_sec} 秒）
 - 文稿朗读后总时长必须严格控制在 {duration_minutes} 分钟内，不得超出
 - 参考字数：约 {approx_words} 词（英文正常语速 130 词/分钟，含 [pause]/[silent] 等标签）
 - 若内容可能超时，请精简表述，优先保证时长符合要求
 ---
 """
-    return base_prompt.strip() + duration_block
+    return base_prompt.strip() + "\n\n" + duration_block
 
 
 # --------------------------------------------------------------------------- #
@@ -315,29 +330,43 @@ def build_storyboard_prompt(script: str, duration_minutes: int = VIDEO_DURATION_
     total_sec = duration_minutes * 60
     return (
         "你是一位资深 AI 视频分镜师，同时也是为 OpenClaw 生成可执行录屏指令的规划师。\n"
-        "请根据下面这段口播文稿（含 [pause]/[silent] 标签），输出一组结构化分镜 JSON。\n\n"
+        "请根据下面这段口播文稿（含 [pause]/[silent] 标签），分析内容节奏和重点，输出一组结构化分镜 JSON。\n\n"
+        "【重要约束】（必须遵守）：\n"
+        "- 禁止选择 Twitter/X 页面，不要包含任何推特相关内容\n"
+        "- 禁止选择需要登录才能访问的页面\n"
+        "- 只选择免费且无需登录的网站（如 YouTube、CoinGlass、TradingView 等）\n\n"
         "【时长估算规则】\n"
-        "- 每个 [pause] 约 0.5 秒，每个 [silent] 约 2 秒。\n"
-        "- 英文正常语速约每分钟 130 词，据此推算各段台词时长。\n"
-        f"- 目标总时长约 {duration_minutes} 分钟（{total_sec} 秒），分镜时间戳需覆盖完整时长，不要遗漏。\n\n"
+        "- 每个 [pause] 约 0.5 秒，每个 [silent] 约 2 秒\n"
+        "- 英文正常语速约每分钟 130 词\n"
+        "- 重点内容（如数据解读、趋势分析、结论）应分配更长的展示时间\n"
+        "- 过渡性内容（如介绍、铺垫）可以较短\n"
+        f"- 目标总时长约 {duration_minutes} 分钟（{total_sec} 秒），分镜时间戳需覆盖完整时长，不要遗漏\n\n"
+        "【分镜画面匹配规则】（极其重要）：\n"
+        "- 先仔细阅读文稿，理解内容逻辑：哪些是引入、哪些是数据展示、哪些是分析解读、哪些是结论\n"
+        "- 每个分镜的 duration_sec 应该与该段文稿内容的实际朗读时长匹配\n"
+        "- 画面选择的依据：文稿内容在讲什么，就配什么相关的画面\n"
+        "  * 讲 BNB 币安币价格 → 打开 Binance 官网或 TradingView 的 BNB 图表\n"
+        "  * 讲合约爆仓数据 → 打开 CoinGlass 的爆仓热力图\n"
+        "  * 讲 K 线走势 → 打开 TradingView 的 K 线图\n"
+        "  * 讲社区讨论 → 打开 YouTube 评论区或 Reddit\n"
+        "- 分镜的 text_clip 字段必须是对应时段的原文台词片段\n\n"
         "【拆分规则】\n"
-        "- 按时间顺序拆分为 3-5 个镜头，覆盖完整时长，不要遗漏。\n"
-        "- 时间必须单调递增，上一镜头的 end_sec <= 下一镜头的 start_sec。\n\n"
+        "- 按时间顺序拆分镜头，覆盖完整时长，不要遗漏\n"
+        "- 时间必须单调递增，上一镜头的 end_sec <= 下一镜头的 start_sec\n\n"
         "【每个镜头字段】\n"
-        "- id: int，从 1 开始。\n"
-        "- start_sec / end_sec: number，单位秒。\n"
-        "- duration_sec: number，等于 end_sec - start_sec。\n"
-        "- page_type: 'browser' / 'social' / 'chart' / 'logo'。\n"
-        "- source: 站点名，如 'youtube' / 'coinglass' / 'ezpro' / 'tradingview' / 'twitter'。\n"
-        "- url: 该镜头需要展示的具体网页地址（尽量给出真实可访问的 URL）。\n"
-        "- view: 页面内聚焦区域，如 'comments_section' / 'btc_liquidation_heatmap' / 'live_kline'。\n"
-        "- scroll_behavior: 'none' / 'scroll_down_slow' / 'scroll_up_slow' / 'scroll_down_fast'。\n"
-        "- action: 'static_view' / 'hover_on_high_liquidation_zones' / 'click_refresh_button' 等。\n"
-        "- text_clip: 与该镜头对应的原文台词片段。\n"
-        "- notes: 补充说明（可选）。\n"
-        "- interaction: 鼠标/键盘交互描述（可选）。\n\n"
+        "- id: int，从 1 开始\n"
+        "- start_sec / end_sec: number，单位秒\n"
+        "- duration_sec: number，等于 end_sec - start_sec\n"
+        "- page_type: 'browser' / 'social' / 'chart' / 'logo'\n"
+        "- source: 站点名，如 'youtube' / 'coinglass' / 'tradingview' / 'binance' / 'reddit'\n"
+        "- url: 该镜头需要展示的具体网页地址\n"
+        "- view: 页面内聚焦区域，如 'btc_liquidation_heatmap' / 'live_kline' / 'comments_section'\n"
+        "- scroll_behavior: 'none' / 'scroll_down_slow' / 'scroll_up_slow' / 'scroll_down_fast'\n"
+        "- action: 'static_view' / 'hover_on_high_liquidation_zones' 等\n"
+        "- text_clip: 与该镜头对应的原文台词片段（必须填写！）\n"
+        "- notes: 补充说明（可选）\n\n"
         "【输出格式（极其重要）】\n"
-        "只输出纯 JSON 数组，不要任何解释、标题、Markdown 或代码块标记。\n\n"
+        "只输出纯 JSON 数组，不要任何解释、标题、Markdown 或代码块标记\n\n"
         "文稿如下：\n\n"
         + script
     )
@@ -349,6 +378,11 @@ def build_recording_instruction(shots: list, folder_name: str) -> str:
     lines = [
         f"【录屏任务】{folder_name}",
         f"📋 总时长：约 {total_duration:.0f} 秒 | 分镜数：{len(shots)} 个",
+        "",
+        "⚠️  重要约束（必须遵守）：",
+        "1. 禁止录制 Twitter/X 页面，不要包含任何推特相关内容",
+        "2. 禁止录制任何需要登录才能访问的页面",
+        "3. 只使用免费且无需登录的网站",
         "",
         "⚠️  操作说明：",
         "1. 开始前先开启录屏软件，录制整个屏幕。",
@@ -435,6 +469,7 @@ def run_workflow(
     local_digital_human: Optional[str] = None,
     local_cartoon_head: Optional[str] = None,
     local_recording: Optional[str] = None,
+    voice_id: Optional[str] = None,
 ) -> dict:
     """
     执行完整的 AI 视频内容生成流程。
@@ -493,17 +528,29 @@ def run_workflow(
     # ── 3. 文字转语音 ─────────────────────────────────────────────────────
     emit("audio", "调用 ElevenLabs 生成音频...")
     try:
-        text_to_speech_to_file(script, audio_path)
+        text_to_speech_to_file(script, audio_path, voice_id=voice_id)
     except Exception as e:
         emit("error", f"音频生成失败: {e}")
         raise
 
     emit("audio", "音频已保存", artifact="audio", path=audio_path)
 
+    # ── 3.1 获取音频实际时长 ─────────────────────────────────────────────────
+    actual_audio_duration = _get_media_duration(audio_path, is_video=False)
+    if actual_audio_duration is None:
+        emit("storyboard", "警告：无法获取音频时长，将使用目标时长")
+        actual_audio_duration = duration_minutes * 60
+    else:
+        emit("storyboard", f"音频实际时长：{actual_audio_duration:.1f} 秒")
+    # 用音频实际时长来决定分镜
+    audio_based_duration_minutes = int(actual_audio_duration / 60) + (1 if actual_audio_duration % 60 > 30 else 0)
+    if audio_based_duration_minutes < 1:
+        audio_based_duration_minutes = 1
+
     # ── 4. 生成分镜 JSON ──────────────────────────────────────────────────
     emit("storyboard", "调用 Gemini 生成分镜...")
     try:
-        storyboard_text = gemini_complete(build_storyboard_prompt(script, duration_minutes))
+        storyboard_text = gemini_complete(build_storyboard_prompt(script, audio_based_duration_minutes))
     except Exception as e:
         emit("error", f"分镜生成失败: {e}")
         raise
@@ -881,6 +928,7 @@ def run_recording_full_pipeline(
     script_source: str = "manual_storyboard",
     script_storyboard: Optional[str] = None,
     script_local_file: Optional[str] = None,
+    voice_id: Optional[str] = None,
 ) -> dict:
     """
     录屏先行完整流水线：口播文稿 → TTS → 数字人切片合成 → 卡通头覆盖 → 画中画 → 替换音频。
@@ -952,7 +1000,7 @@ def run_recording_full_pipeline(
     # Step 2：文字转语音
     emit("audio", "调用 ElevenLabs 生成音频...")
     try:
-        text_to_speech_to_file(script, audio_path)
+        text_to_speech_to_file(script, audio_path, voice_id=voice_id)
     except Exception as e:
         emit("error", f"音频生成失败: {e}")
         raise

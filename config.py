@@ -25,10 +25,38 @@ FEISHU_ENCRYPT_KEY: str = ""
 TEST_TASK_TEXT: str = "ping: 请回复我一句 ok，并说明你当前可用的模型提供方列表。"
 
 # ===== ElevenLabs TTS =====
-ELEVENLABS_API_KEY: str = "sk_aad07cfc5ea980227eacbf73db7f5982275b7b52ea3abed8"
+ELEVENLABS_API_KEY: str = "sk_e9b4fefcb75dfb2bb4fb382260ffd0fee7bf7da8a0d754ea"
 DEFAULT_VOICE_ID: str = "Cz0K1kOv9tD8l0b5Qu53"
 DEFAULT_MODEL_ID: str = "eleven_v3"
 DEFAULT_OUTPUT_FORMAT: str = "mp3_44100_128"
+
+
+def get_elevenlabs_voices() -> list:
+    """从 ElevenLabs API 获取可用音色列表。"""
+    import requests
+    if not ELEVENLABS_API_KEY:
+        return []
+    try:
+        response = requests.get(
+            'https://api.elevenlabs.io/v1/voices',
+            headers={'xi-api-key': ELEVENLABS_API_KEY},
+            timeout=10
+        )
+        if response.status_code == 200:
+            data = response.json()
+            return [
+                {
+                    "voice_id": voice.get("voice_id", ""),
+                    "name": voice.get("name", ""),
+                    "preview_url": voice.get("preview_url", ""),
+                    "category": voice.get("category", ""),
+                    "labels": voice.get("labels", {})
+                }
+                for voice in data.get("voices", [])
+            ]
+    except Exception as e:
+        print(f"获取 ElevenLabs 音色列表失败: {e}")
+    return []
 
 # ===== 大模型提供商切换 =====
 # 可选值：

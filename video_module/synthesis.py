@@ -235,6 +235,9 @@ def replace_head(
     ffmpeg_params: Optional[list] = None,
     detect_interval: int = 30,
     detect_once: bool = True,
+    overlay_x: float = 0.5,
+    overlay_y: float = 0.38,
+    overlay_scale: float = 0.48,
 ) -> str:
     """
     用卡通头部视频替换原视频中的人脸区域。
@@ -248,6 +251,9 @@ def replace_head(
         smooth_window   : bbox 平滑窗口帧数，防抖动，默认 5
         white_thresh    : 白色背景抠图阈值（0~255，默认从 config.py 读取）
         keep_audio      : 是否保留原视频音频，默认 True
+        overlay_x       : 直接覆盖模式时卡通头水平位置（0.0-1.0），默认 0.5
+        overlay_y       : 直接覆盖模式时卡通头垂直位置（0.0-1.0），默认 0.3
+        overlay_scale   : 直接覆盖模式时卡通头相对视频宽度比例，默认 0.4
 
     返回：
         输出文件路径
@@ -272,6 +278,9 @@ def replace_head(
         ffmpeg_params=ffmpeg_params,
         detect_interval=detect_interval,
         detect_once=detect_once,
+        overlay_x=overlay_x,
+        overlay_y=overlay_y,
+        overlay_scale=overlay_scale,
     )
 
 

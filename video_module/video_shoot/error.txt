@@ -1,0 +1,1 @@
+Failed to start browser for recording. Browser tools are currently unavailable due to gateway/CDP connection issues.

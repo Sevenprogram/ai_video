@@ -37,6 +37,8 @@ from config import (
     VIDEO_DIGITAL_HUMAN_DEFAULT,
     VIDEO_CARTOON_HEAD_DEFAULT,
     VIDEO_SHOOT_DEFAULT,
+    DEFAULT_VOICE_ID,
+    get_elevenlabs_voices,
 )
 
 app = FastAPI(title="AI Video")
@@ -72,6 +74,16 @@ def _log(job_id: str, msg: str, step: str = "info") -> None:
 
 
 # ─── API：主流程 ─────────────────────────────────────────────────────
+@app.get("/api/elevenlabs-voices")
+def list_elevenlabs_voices():
+    """返回 ElevenLabs 可用的音色列表（包含预览链接）。"""
+    voices = get_elevenlabs_voices()
+    return {
+        "voices": voices,
+        "default_voice_id": DEFAULT_VOICE_ID,
+    }
+
+
 class CreateJobRequest(BaseModel):
     prompt: Optional[str] = ""  # 创作提示词，留空则使用默认（Ezpro/加密货币短视频）
     openclaw_timeout: Optional[int] = None
@@ -81,6 +93,7 @@ class CreateJobRequest(BaseModel):
     local_digital_human: Optional[str] = None  # 数字人视频路径/文件名
     local_cartoon_head: Optional[str] = None   # 卡通头部视频路径/文件名
     local_recording: Optional[str] = None      # 录屏视频路径/文件名
+    voice_id: Optional[str] = None             # ElevenLabs 音色 ID
 
 
 @app.post("/api/jobs")
@@ -166,6 +179,7 @@ def create_job(req: CreateJobRequest):
                 local_digital_human=req.local_digital_human or None,
                 local_cartoon_head=req.local_cartoon_head or None,
                 local_recording=req.local_recording or None,
+                voice_id=req.voice_id or None,
             )
             with jobs_lock:
                 jobs[job_id]["artifacts"].update({
@@ -429,6 +443,7 @@ class CreateRecordingJobRequest(BaseModel):
     script_source: Optional[str] = "manual_storyboard"
     script_storyboard: Optional[str] = None  # manual_storyboard 时的分镜内容
     script_local_file: Optional[str] = None  # local_file 时的文件名
+    voice_id: Optional[str] = None  # ElevenLabs 音色 ID
 
 
 def _log_recording(job_id: str, msg: str) -> None:
@@ -462,6 +477,7 @@ def create_recording_job(req: CreateRecordingJobRequest):
             "script_source": req.script_source or "manual_storyboard",
             "script_storyboard": req.script_storyboard or "",
             "script_local_file": req.script_local_file or "",
+            "voice_id": req.voice_id or "",
             "skip_openclaw": False,
             "extend_openclaw": False,
             "openclaw_manual_filename": None,
@@ -680,6 +696,7 @@ def run_recording_pipeline(job_id: str, duration_minutes: Optional[int] = Query(
 
     def run():
         try:
+            voice_id = rj.get("voice_id") or None
             artifacts = run_recording_full_pipeline(
                 prompt=prompt,
                 recording_path=recording_path,
@@ -693,6 +710,7 @@ def run_recording_pipeline(job_id: str, duration_minutes: Optional[int] = Query(
                 script_source=script_source,
                 script_storyboard=script_storyboard or None,
                 script_local_file=script_local_file or None,
+                voice_id=voice_id,
             )
             with jobs_lock:
                 if job_id in recording_jobs:

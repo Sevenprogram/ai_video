@@ -1,0 +1,3 @@
+file 'video_module/action_clips/jirian/idle_hands_open.mp4'
+file 'video_module/action_clips/jirian/look_side_screen.mp4'
+file 'video_module/action_clips/jirian/shrug_open_hands.mp4'

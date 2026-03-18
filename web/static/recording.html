@@ -132,6 +132,11 @@ header {
   letter-spacing: 0.1em;
   color: var(--text-muted);
 }
+.select-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
 .select-field {
   width: 100%;
   background: var(--bg-tertiary);
@@ -617,9 +622,20 @@ textarea#script-storyboard { height: 100px; }
     
     <div class="panel-section">
       <div class="panel-label">本地视频选择</div>
+      <div class="select-label">数字人视频（文件夹）</div>
       <select id="local-digital-human" class="select-field"></select>
+      <div class="select-label">卡通头部视频</div>
       <select id="local-cartoon-head" class="select-field"></select>
+      <div class="select-label">录屏视频</div>
       <select id="local-recording" class="select-field"></select>
+    </div>
+
+    <div class="panel-section">
+      <div class="panel-label">TTS 音色</div>
+      <div class="select-label">生成口播音频使用的音色（选择后可试听）</div>
+      <select id="voice-id" class="select-field">
+        <option value="">加载中...</option>
+      </select>
     </div>
     
     <div class="panel-section hidden" id="scriptSourceSection">
@@ -732,6 +748,46 @@ function updateScriptSourceVisibility() {
 document.getElementById('mode').addEventListener('change', updateMode);
 document.getElementById('script-source').addEventListener('change', updateScriptSourceVisibility);
 
+async function loadVoiceSelect() {
+  try {
+    const res = await fetch('/api/elevenlabs-voices');
+    if (!res.ok) return;
+    const data = await res.json();
+    const voices = data.voices || [];
+    const defaultVoiceId = data.default_voice_id || '';
+    const sel = document.getElementById('voice-id');
+    if (!sel) return;
+    const labelMap = {
+      accent: { american: '美式', british: '英式', australian: '澳式', indian: '印式', irish: '爱尔兰', scottish: '苏格兰' },
+      gender: { male: '男', female: '女', neutral: '中性' },
+      age: { young: '年轻', middle_aged: '中年', old: '老年' },
+      use_case: { conversational: '对话', narration: '旁白', entertainment_tv: '娱乐节目', social_media: '社交媒体', characters: '角色', advertisement: '广告', news: '新闻', podcast: '播客', audiobook: '有声书' },
+      descriptive: { calm: '平静', energetic: '活力', warm: '温暖', professional: '专业', sassy: '时尚', classy: '优雅', quirky: ' quirky' }
+    };
+    function getLabel(key, value) {
+      if (!value) return '';
+      return labelMap[key]?.[value] || value;
+    }
+    sel.innerHTML = '<option value="">-- 默认音色 --</option>' + voices.map(v => {
+      const labels = v.labels || {};
+      const tags = [];
+      if (labels.gender) tags.push(getLabel('gender', labels.gender));
+      if (labels.accent) tags.push(getLabel('accent', labels.accent));
+      if (labels.age) tags.push(getLabel('age', labels.age));
+      const tagStr = tags.length > 0 ? ' [' + tags.join(' · ') + ']' : '';
+      const selected = v.voice_id === defaultVoiceId ? ' selected' : '';
+      return '<option value="' + esc(v.voice_id) + '"' + selected + ' data-preview="' + esc(v.preview_url || '') + '">' + esc(v.name) + tagStr + '</option>';
+    }).join('');
+    sel.addEventListener('change', function() {
+      const previewUrl = this.options[this.selectedIndex]?.dataset?.preview;
+      if (previewUrl) {
+        const audio = new Audio(previewUrl);
+        audio.play().catch(() => {});
+      }
+    });
+  } catch (_) {}
+}
+
 async function loadLocalVideoSelects() {
   try {
     const [videosRes, defaultsRes, scriptsRes] = await Promise.all([
@@ -779,7 +835,8 @@ async function startJob() {
   const scriptSource = document.getElementById('script-source').value || 'manual_storyboard';
   const scriptStoryboard = document.getElementById('script-storyboard').value.trim() || null;
   const scriptLocalFile = document.getElementById('script-local-file').value.trim() || null;
-  
+  const voiceId = document.getElementById('voice-id').value.trim() || null;
+
   if (!useLocalVideos && !prompt && !localRecording) {
     alert('请输入提示词，或选择录屏视频');
     return;
@@ -815,6 +872,7 @@ async function startJob() {
         script_source: useLocalVideos ? scriptSource : 'manual_storyboard',
         script_storyboard: useLocalVideos ? scriptStoryboard : null,
         script_local_file: useLocalVideos ? scriptLocalFile : null,
+        voice_id: voiceId,
       })
     });
     if (!res.ok) throw new Error(await res.text());
@@ -1086,6 +1144,7 @@ document.getElementById('btnPipeline').onclick = async () => {
 
 document.addEventListener('DOMContentLoaded', () => {
   loadLocalVideoSelects();
+  loadVoiceSelect();
   refreshHistory();
   setInterval(refreshHistory, 5000);
 });

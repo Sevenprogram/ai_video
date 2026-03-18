@@ -44,6 +44,7 @@ def _jeniya_complete(prompt: str) -> str:
     client = openai.OpenAI(
         api_key=PROXY_API_KEY,
         base_url=PROXY_BASE_URL,
+        timeout=60.0,  # 60秒超时
     )
     r = client.chat.completions.create(
         model=PROXY_MODEL,  # gemini-2.0-flash（Jeniya 侧模型）
@@ -92,10 +93,11 @@ def _claude_complete(prompt: str) -> str:
         raise RuntimeError(f"Claude 调用失败: {e}")
 
 
-def text_to_speech_to_file(text: str, output_path: str) -> None:
+def text_to_speech_to_file(text: str, output_path: str, voice_id: str = None) -> None:
     """调用 ElevenLabs API 将文本转为语音，保存为音频文件。"""
     import requests
-    url = "https://api.elevenlabs.io/v1/text-to-speech/" + DEFAULT_VOICE_ID
+    voice_id = voice_id or DEFAULT_VOICE_ID
+    url = "https://api.elevenlabs.io/v1/text-to-speech/" + voice_id
     headers = {
         "xi-api-key": ELEVENLABS_API_KEY,
         "Content-Type": "application/json",

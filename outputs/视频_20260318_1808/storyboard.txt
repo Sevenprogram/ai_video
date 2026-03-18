@@ -1,0 +1,95 @@
+```json
+[
+  {
+    "id": 1,
+    "start_sec": 0,
+    "end_sec": 18.18,
+    "duration_sec": 18.18,
+    "page_type": "social",
+    "source": "twitter",
+    "url": "https://twitter.com/search?q=Bitcoin%20liquidation%20binance&src=typed_query",
+    "view": "tweet_feed",
+    "scroll_behavior": "scroll_down_fast",
+    "action": "static_view",
+    "text_clip": "Alright, let's dive into this. Analyzing Ezpro.club, the core functions revolve around: the \"15-win challenge\" implying a focus on rapid, high-success trading; the \"Signal-Free mode\" which suggests a proprietary, unfiltered trading environment; and the \"naked K-line trading environment\" highlighting pure price action analysis without indicators.\n\nNow, scanning Twitter/X and YouTube for crypto hot topics in the last 24 hours... Okay, there's a significant amount of chatter around that massive $300M liquidation event on Binance for Bitcoin futures. Also, some notable disagreement between \"CryptoWhale\" and \"AltcoinPsycho\" regarding Ethereum's short-term trajectory. And I'm seeing a few posts praising \"Brad Trades\" for a recent successful short call on Solana."
+  },
+  {
+    "id": 2,
+    "start_sec": 18.18,
+    "end_sec": 32.36,
+    "duration_sec": 14.18,
+    "page_type": "social",
+    "source": "youtube",
+    "url": "https://www.youtube.com/watch?v=example_liquidation_video",
+    "view": "video_player",
+    "scroll_behavior": "none",
+    "action": "static_view",
+    "text_clip": "Here's a modular script, designed for ElevenLabs, blending these elements:\n\n(Scene: Intro - Grabbing attention with a real-world event)\n\nHey everyone. Did you see that $300 million liquidation bomb hit Bitcoin futures yesterday? [smacks lips] Wild stuff. It’s a stark reminder of how quickly things can turn in this market, especially when emotions run high and signals get... noisy. [sighs]"
+  },
+  {
+    "id": 3,
+    "start_sec": 32.36,
+    "end_sec": 43.14,
+    "duration_sec": 10.78,
+    "page_type": "browser",
+    "source": "ezpro.club",
+    "url": "https://ezpro.club/",
+    "view": "homepage",
+    "scroll_behavior": "none",
+    "action": "static_view",
+    "text_clip": "(Scene: Transition to Ezpro's solution)\n\nAnd that's exactly why I wanted to talk about Ezpro.club today. They're really leaning into this idea of a pure, unfiltered trading experience. Think about it: no signals, just you and the naked K-line. [clears throat] It’s designed to cut through the noise."
+  },
+  {
+    "id": 4,
+    "start_sec": 43.14,
+    "end_sec": 53.32,
+    "duration_sec": 10.18,
+    "page_type": "chart",
+    "source": "coinglass",
+    "url": "https://coinglass.com/btc/liquidation",
+    "view": "btc_liquidation_heatmap",
+    "scroll_behavior": "scroll_down_slow",
+    "action": "static_view",
+    "text_clip": "(Scene: B-Block 1 - Data Scene - Focusing on market sentiment)\n\nLet's look at the CoinGlass liquidation heatmap real quick. You can see pockets of intense leverage building up, particularly around key resistance levels we’ll get to. This is the kind of data that fuels those massive liquidations, right? [pause] It’s a good visual of where the pressure is."
+  },
+  {
+    "id": 5,
+    "start_sec": 53.32,
+    "end_sec": 74.8,
+    "duration_sec": 21.48,
+    "page_type": "browser",
+    "source": "ezpro.club",
+    "url": "https://ezpro.club/dashboard",
+    "view": "naked_kline_chart",
+    "scroll_behavior": "none",
+    "action": "static_view",
+    "text_clip": "(Scene: B-Block 2 - Practical Scene - Ezpro's Naked K-Line and Signal-Free)\n\nNow, switching over to the Ezpro platform itself. What I love is this pure, naked K-line environment. [clears throat] No lagging indicators cluttering your view. Wait... Actually, it forces you to focus on pure price action. You can spot support and resistance levels with incredible clarity. And that \"Signal-Free mode\"? It means you're not relying on external buy/sell calls. You develop your own conviction, based on the charts. That’s crucial for consistency."
+  },
+  {
+    "id": 6,
+    "start_sec": 74.8,
+    "end_sec": 90.92,
+    "duration_sec": 16.12,
+    "page_type": "social",
+    "source": "youtube",
+    "url": "https://www.youtube.com/watch?v=example_trader_video",
+    "view": "video_player",
+    "scroll_behavior": "none",
+    "action": "static_view",
+    "text_clip": "(Scene: B-Block 3 - Social Commentary - Addressing common trading advice)\n\nI saw a YouTube video earlier today where a popular trader was advocating for a very aggressive entry based on a few moving averages. [chuckles] While I respect their opinion, it felt a bit... premature. The market wasn't showing that clear conviction yet. On Ezpro, you'd see that hesitation in the K-lines before jumping in. It’s about building that independent analysis."
+  },
+  {
+    "id": 7,
+    "start_sec": 90.92,
+    "end_sec": 117.52,
+    "duration_sec": 26.6,
+    "page_type": "browser",
+    "source": "ezpro.club",
+    "url": "https://ezpro.club/dashboard",
+    "view": "refresh_button",
+    "scroll_behavior": "none",
+    "action": "click_refresh_button",
+    "text_clip": "(Scene: C-Block - Action and Call to Action)\n\nSee this refresh button? [silent] [silent] [silent] It’s about real-time data, real-time decisions. No delays. [silent] [silent] [silent] If you're tired of chasing signals and want to develop your own trading edge with a truly clean charting experience, you need to check out Ezpro.club. Hit that link, explore the 15-win challenge, and most importantly, join our Telegram group for more in-depth discussions and live Q&A. Let’s trade smarter, not just louder."
+  }
+]
+```

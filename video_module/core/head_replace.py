@@ -1,157 +1,70 @@
 """
-头部替换模块：用卡通头部视频直接覆盖原视频中的人脸区域
+头部替换模块（简化版）：直接用 FFmpeg 覆盖卡通头部
 
-简化版（直接覆盖）：
-  1. 首帧检测一次人脸 bbox（数字人固定机位，仅需一次）
-  2. 后续所有帧复用相同位置，不再检测
-  3. 卡通头部视频逐帧覆盖到人脸区域
-  4. 所有帧写入临时视频，最后附回原始音频
+方法：使用 FFmpeg 的 colorkey 滤镜去除白色背景，然后 overlay 到数字人视频上。
+不需要人脸检测，速度极快。
 
-注意：本版本适用于数字人视频（固定机位），不适用于移动镜头。
+注意：适用于数字人视频（固定机位），卡通头部和数字人视频需要事先对齐位置。
 """
 import logging
 import os
 import subprocess
 import sys
-from typing import Optional, List, Tuple
+from typing import Optional, List
 
 import cv2
-import numpy as np
 
 # 导入配置
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from config import CARTOON_HEAD_SCALE, CARTOON_HEAD_WHITE_THRESH
+from config import CARTOON_HEAD_WHITE_THRESH
 
 from .utils import check_video_path, ensure_output_dir
 
 logger = logging.getLogger(__name__)
 
 
-# ── 白色背景去除 ───────────────────────────────────
+def _get_video_info(path: str) -> dict:
+    """获取视频基本信息"""
+    cap = cv2.VideoCapture(path)
+    info = {
+        "width": int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
+        "height": int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)),
+        "fps": cap.get(cv2.CAP_PROP_FPS),
+        "frame_count": int(cap.get(cv2.CAP_PROP_FRAME_COUNT)),
+    }
+    cap.release()
+    return info
 
-def _remove_white_bg(
-    img_bgr: np.ndarray,
-    white_thresh: int = CARTOON_HEAD_WHITE_THRESH,
-    blur_size: int = 5,
-) -> np.ndarray:
-    """
-    将纯白背景转为透明，返回 BGRA 图像。
-
-    white_thresh : 灰度值超过此阈值视为白色背景（0~255，默认从 config.py 读取）
-    blur_size    : 遮罩边缘高斯模糊核大小，0 表示不模糊
-
-    优化：使用向量化操作代替循环，提高处理速度
-    """
-    # 使用 cv2.inRange 进行向量化阈值处理，比循环快很多
-    lower_white = np.array([white_thresh, white_thresh, white_thresh], dtype=np.uint8)
-    upper_white = np.array([255, 255, 255], dtype=np.uint8)
-    mask = cv2.inRange(img_bgr, lower_white, upper_white)
-
-    # 反转：白色区域变0，非白色变255
-    mask = cv2.bitwise_not(mask)
-
-    # 形态学处理：先腐蚀去白边毛刺，再膨胀还原内容
-    kernel = np.ones((3, 3), np.uint8)
-    mask = cv2.erode(mask, kernel, iterations=1)
-    mask = cv2.dilate(mask, kernel, iterations=2)
-
-    # 边缘软化，让融合更自然
-    if blur_size > 1:
-        blur_size = blur_size if blur_size % 2 == 1 else blur_size + 1
-        mask = cv2.GaussianBlur(mask, (blur_size, blur_size), 0)
-
-    bgra = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2BGRA)
-    bgra[:, :, 3] = mask
-    return bgra
-
-
-# ── Alpha 混合 ─────────────────────────────────────
-
-def _alpha_blend(
-    background: np.ndarray,
-    foreground_bgra: np.ndarray,
-    x: int,
-    y: int,
-) -> np.ndarray:
-    """
-    将带 alpha 通道的前景图混合到背景的 (x, y) 位置。
-    超出背景边界的部分自动裁剪，不会报错。
-    """
-    bg_h, bg_w = background.shape[:2]
-    fg_h, fg_w = foreground_bgra.shape[:2]
-
-    # 计算实际覆盖区域（处理越界情况）
-    bx1, by1 = max(0, x), max(0, y)
-    bx2, by2 = min(bg_w, x + fg_w), min(bg_h, y + fg_h)
-
-    if bx2 <= bx1 or by2 <= by1:
-        return background  # 完全越界，直接返回原图
-
-    # 前景中对应的裁剪区域
-    fx1, fy1 = bx1 - x, by1 - y
-    fx2, fy2 = fx1 + (bx2 - bx1), fy1 + (by2 - by1)
-
-    fg_roi = foreground_bgra[fy1:fy2, fx1:fx2].astype(np.float32)
-    bg_roi = background[by1:by2, bx1:bx2].astype(np.float32)
-
-    # alpha 混合：out = fg * alpha + bg * (1 - alpha)
-    alpha = fg_roi[:, :, 3:4] / 255.0
-    blended = fg_roi[:, :, :3] * alpha + bg_roi * (1.0 - alpha)
-
-    result = background.copy()
-    result[by1:by2, bx1:bx2] = blended.astype(np.uint8)
-    return result
-
-
-# ── Bbox 平滑 ──────────────────────────────────────
-
-def _smooth_bbox(
-    buf: deque,
-    bbox: Tuple[float, float, float, float],
-) -> Tuple[int, int, int, int]:
-    """
-    将新 bbox 加入滑动窗口，返回平均后的整数 bbox。
-    有效抑制检测结果的帧间抖动。
-    """
-    buf.append(bbox)
-    return (
-        int(np.mean([b[0] for b in buf])),
-        int(np.mean([b[1] for b in buf])),
-        int(np.mean([b[2] for b in buf])),
-        int(np.mean([b[3] for b in buf])),
-    )
-
-
-# ── 主函数 ─────────────────────────────────────────
 
 def replace_head(
     video_path: str,
     pig_path: str,
     output_path: str,
-    head_scale: float = CARTOON_HEAD_SCALE,
-    y_offset_ratio: float = 0.25,
+    head_scale: float = 1.0,
+    y_offset_ratio: float = 0.0,
     smooth_window: int = 5,
     white_thresh: int = CARTOON_HEAD_WHITE_THRESH,
     keep_audio: bool = True,
     ffmpeg_params: Optional[List[str]] = None,
-    detect_interval: int = 30,  # detect_once=False 时生效：每 N 帧检测一次
-    detect_once: bool = True,   # 数字人固定机位，仅首帧检测一次，大幅加速
+    detect_interval: int = 30,
+    detect_once: bool = True,
+    # 新参数：指定卡通头部覆盖位置（相对于视频宽度，0.0-1.0）
+    overlay_x: float = 0.5,  # 水平位置，0.5 表示居中
+    overlay_y: float = 0.38,  # 垂直位置，0.38 表示略偏下
+    overlay_scale: float = 0.48,  # 卡通头部相对视频宽度的缩放比例
 ) -> str:
     """
-    用卡通头部视频替换原视频中的人脸区域。
+    用卡通头部视频直接覆盖到原视频上（FFmpeg 方式，极速）。
 
     参数：
-        video_path      : 原始人物视频路径
+        video_path      : 原始数字人视频路径
         pig_path        : 卡通头部视频路径（白色背景 MP4）
         output_path     : 输出 MP4 路径
-        head_scale      : 卡通头相对人脸 bbox 的缩放倍数（默认从 config.py 读取）
-                          （需要比脸大，才能盖住头发和额头）
-        y_offset_ratio  : 卡通头中心相对 bbox 中心的上移比例，默认 0.25
-                          （头顶占头部更多比例，需要往上偏）
-        smooth_window   : bbox 平滑窗口大小，默认 5 帧
-        white_thresh    : 白色背景阈值，默认 240
+        overlay_x       : 卡通头部水平位置（0.0-1.0），默认 0.5（居中）
+        overlay_y       : 卡通头部垂直位置（0.0-1.0），默认 0.3（顶部 30%）
+        overlay_scale   : 卡通头部相对视频宽度的缩放比例，默认 0.4
+        white_thresh    : 白色背景阈值（0-255），默认 240
         keep_audio      : 是否保留原视频音频，默认 True
-        detect_interval : 每 N 帧检测一次人脸（中间帧复用上次 bbox），默认 5，可显著加速
 
     返回：
         output_path
@@ -160,158 +73,164 @@ def replace_head(
     check_video_path(pig_path)
     ensure_output_dir(output_path)
 
-    logger.info("加载视频 — 原始：%s，猪头：%s", video_path, pig_path)
+    logger.info("=== 头部替换（FFmpeg 直接覆盖模式）===")
+    logger.info("原始视频：%s", video_path)
+    logger.info("卡通头部：%s", pig_path)
+    logger.info("输出路径：%s", output_path)
 
-    src_cap = cv2.VideoCapture(video_path)
-    pig_cap = cv2.VideoCapture(pig_path)
+    # 获取视频信息
+    video_info = _get_video_info(video_path)
+    pig_info = _get_video_info(pig_path)
+    vw, vh = video_info["width"], video_info["height"]
+    pw, ph = pig_info["width"], pig_info["height"]
 
-    src_w  = int(src_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    src_h  = int(src_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    src_fps = src_cap.get(cv2.CAP_PROP_FPS)
-    total_frames = int(src_cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    pig_total = int(pig_cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    logger.info("原始视频：%dx%d", vw, vh)
+    logger.info("卡通头部：%dx%d", pw, ph)
 
-    logger.info("原始视频：%dx%d, %.1ffps, %d帧", src_w, src_h, src_fps, total_frames)
-    logger.info("猪头视频：%d帧，将循环使用", pig_total)
+    # 计算卡通头部的目标尺寸
+    target_width = int(vw * overlay_scale)
+    target_height = int(target_width * ph / pw)  # 保持宽高比
 
-    # 预加载猪头视频所有帧到内存（避免每帧重复读取和解码）
-    logger.info("预加载猪头视频帧...")
-    pig_frames = []
-    pig_cap_all = cv2.VideoCapture(pig_path)
-    while True:
-        ret, frame = pig_cap_all.read()
-        if not ret:
-            break
-        pig_frames.append(frame)
-    pig_cap_all.release()
-    pig_total = len(pig_frames)
-    logger.info("猪头视频预加载完成：%d 帧", pig_total)
+    # 计算覆盖位置（像素坐标）
+    x = int(vw * overlay_x - target_width / 2)
+    y = int(vh * overlay_y - target_height / 2)
 
-    # 预计算猪头的 BGRA 版本（白色背景去除后），根据不同的缩放尺寸缓存
-    pig_bgra_cache = {}  # size -> bgra
+    logger.info("卡通头部目标尺寸：%dx%d", target_width, target_height)
+    logger.info("覆盖位置：(%d, %d)", x, y)
 
-    # 临时文件保存无音频的处理结果（后续用 moviepy 附回音频）
-    tmp_path = output_path.replace(".mp4", "_tmp_noaudio.mp4")
-    # 使用 mp4v 编码器，兼容性更好
-    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-    writer = cv2.VideoWriter(tmp_path, fourcc, src_fps, (src_w, src_h))
+    # 计算白色阈值（colorkey 使用 RGB，需要转换）
+    # white_thresh 是灰度阈值（0-255），转换为 RGB 近似值
+    # colorkey 的 similarity 参数范围：0.01-1.0（浮点数）
+    # white_thresh=240 意味着 RGB 值都 >=240 的被认为是白色
+    # 转换公式：(255 - white_thresh) / 255 得到 0-1 范围的相似度
+    similarity = max(0.01, min(1.0, (255 - white_thresh) / 255.0))
+    logger.info("白色背景阈值：%d（similarity=%.2f）", white_thresh, similarity)
 
-    # 初始化 OpenCV 人脸检测器（Haar 级联，内置于 OpenCV，无需额外下载）
-    face_cascade = cv2.CascadeClassifier(
-        cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
-    )
-    logger.info("人脸检测器已加载（OpenCV Haar Cascade）")
+    # 临时文件
+    tmp_pig = output_path.replace(".mp4", "_pig_processed.mp4")
 
-    bbox_buf = deque(maxlen=smooth_window)  # bbox 平滑缓冲
-    last_bbox = None                         # 检测失败时复用上一帧结果
-    pig_idx = 0                              # 猪头视频当前帧索引
-
-    logger.info("开始逐帧处理...")
-    frame_idx = 0
-
-    while True:
-        ret, src_frame = src_cap.read()
-        if not ret:
-            break
-
-        # ── 取猪头当前帧（从预加载的帧数组中循环获取，避免重复IO） ─────
-        pig_frame = pig_frames[pig_idx % pig_total]
-        pig_idx += 1
-
-        # ── 人脸检测 ─────────────────────────────────────────────────────
-        # detect_once=True（数字人固定机位）：仅首帧检测一次，后续全复用，大幅加速
-        # detect_once=False：每 detect_interval 帧检测一次
-        should_detect = (
-            (detect_once and last_bbox is None) or
-            (not detect_once and frame_idx % detect_interval == 0)
+    # 构建 FFmpeg 命令
+    # 方案：
+    # 1. 使用 colorkey 滤镜去除白色背景（白色变透明）
+    # 2. 缩放卡通头部
+    # 3. 叠加到主视频上
+    
+    # 第一次处理：去除白色背景并缩放
+    cmd_preprocess = [
+        "ffmpeg", "-y",
+        "-i", pig_path,
+        "-vf", f"colorkey=0xFFFFFF:{similarity}:0.0,scale={target_width}:{target_height}",
+        "-c:v", "libvpx",  # VP9 支持透明度
+        "-crf", "30",
+        "-b:v", "0",
+        tmp_pig
+    ]
+    
+    logger.info("预处理卡通头部（去白底 + 缩放）...")
+    try:
+        result = subprocess.run(
+            cmd_preprocess,
+            check=True,
+            capture_output=True,
+            text=True
         )
-        if should_detect:
-            gray = cv2.cvtColor(src_frame, cv2.COLOR_BGR2GRAY)
-            faces = face_cascade.detectMultiScale(
-                gray,
-                scaleFactor=1.15,
-                minNeighbors=5,
-                minSize=(80, 80),
-            )
-            if len(faces) > 0:
-                faces_sorted = sorted(faces, key=lambda f: f[2] * f[3], reverse=True)
-                fx, fy, fw, fh = faces_sorted[0]
-                last_bbox = _smooth_bbox(bbox_buf, (fx, fy, fw, fh))
-                if detect_once:
-                    logger.info("首帧检测完成，人脸位置已固定，后续帧直接复用（大幅加速）")
+        logger.info("预处理完成")
+    except subprocess.CalledProcessError as e:
+        logger.warning("VP9 编码失败，回退到 PNG 序列方式: %s", e.stderr)
+        # 回退方案：使用 overlay 滤镜链直接处理
+        cmd = _build_ffmpeg_command(
+            video_path, pig_path, output_path,
+            x, y, target_width, target_height,
+            white_thresh, similarity, keep_audio
+        )
+        logger.info("使用滤镜链方式执行...")
+        subprocess.run(cmd, check=True, capture_output=True)
+        logger.info("头部替换完成（滤镜链模式），输出：%s", output_path)
+        return output_path
 
-        # ── 猪头缩放 & 定位 ───────────────────────────────
-        if last_bbox is not None:
-            fx, fy, fw, fh = last_bbox
-
-            # 目标尺寸：比人脸大 head_scale 倍
-            target_size = int(fw * head_scale)
-            if target_size > 0 and pig_frame is not None:
-                # 使用缓存的 BGRA 帧（避免每帧重复处理白色背景）
-                if target_size not in pig_bgra_cache:
-                    pig_resized = cv2.resize(pig_frame, (target_size, target_size))
-                    pig_bgra_cache[target_size] = _remove_white_bg(pig_resized, white_thresh)
-                pig_bgra = pig_bgra_cache[target_size]
-
-                # 定位：以人脸 bbox 中心为基准，向上偏移
-                cx = fx + fw // 2
-                cy = fy + fh // 2 - int(fh * y_offset_ratio)
-
-                px = cx - target_size // 2
-                py = cy - target_size // 2
-
-                src_frame = _alpha_blend(src_frame, pig_bgra, px, py)
-
-        writer.write(src_frame)
-        frame_idx += 1
-
-        if frame_idx % 100 == 0:
-            logger.info("处理进度：%d / %d 帧 (%.1f%%)",
-                        frame_idx, total_frames, frame_idx / total_frames * 100)
-
-    # 释放资源
-    src_cap.release()
-    pig_cap.release()
-    writer.release()
-
-    logger.info("帧处理完成，共 %d 帧", frame_idx)
-
-    # ── 附回原始音频 ──────────────────────────────────────
+    # 第二次处理：叠加到主视频（-r 25 恒定帧率减轻卡顿）
     if keep_audio:
-        logger.info("附回原始音频（FFmpeg 方式）...")
-        # 使用 FFmpeg 直接合并，避免 moviepy 二次编码
-        try:
-            subprocess.run([
-                "ffmpeg", "-y", "-i", tmp_path, "-i", video_path,
-                "-c:v", "copy", "-map", "0:v:0", "-map", "1:a:0",
-                "-shortest", "-c:a", "aac", output_path
-            ], check=True, capture_output=True)
-            logger.info("FFmpeg 音频附加完成")
-        except subprocess.CalledProcessError as e:
-            logger.warning("FFmpeg 附加音频失败，回退 moviepy: %s", e)
-            from moviepy import VideoFileClip
-            processed = VideoFileClip(tmp_path)
-            original = VideoFileClip(video_path)
-
-            if original.audio is not None:
-                final = processed.with_audio(original.audio)
-            else:
-                logger.warning("原视频无音频，跳过音频附加")
-                final = processed
-
-            write_kw = dict(codec="libx264", audio_codec="aac", logger="bar")
-            if ffmpeg_params:
-                write_kw["ffmpeg_params"] = ffmpeg_params
-            final.write_videofile(output_path, **write_kw)
-            final.close()
-            processed.close()
-            original.close()
-
-        # 清理临时文件
-        if os.path.exists(tmp_path):
-            os.remove(tmp_path)
+        cmd_overlay = [
+            "ffmpeg", "-y",
+            "-i", video_path,
+            "-i", tmp_pig,
+            "-filter_complex",
+            f"[1:v]format=rgba[fg];[0:v][fg]overlay={x}:{y}",
+            "-c:v", "libx264", "-preset", "fast", "-crf", "23", "-r", "25",
+            "-c:a", "copy",
+            output_path
+        ]
     else:
-        os.rename(tmp_path, output_path)
+        cmd_overlay = [
+            "ffmpeg", "-y",
+            "-i", video_path,
+            "-i", tmp_pig,
+            "-filter_complex",
+            f"[1:v]format=rgba[fg];[0:v][fg]overlay={x}:{y}",
+            "-c:v", "libx264", "-preset", "fast", "-crf", "23", "-r", "25",
+            output_path
+        ]
+
+    logger.info("叠加卡通头部到视频...")
+    try:
+        result = subprocess.run(
+            cmd_overlay,
+            check=True,
+            capture_output=True,
+            text=True
+        )
+        logger.info("叠加完成")
+    except subprocess.CalledProcessError as e:
+        logger.error("叠加失败，回退到滤镜链方式: %s", e.stderr)
+        cmd = _build_ffmpeg_command(
+            video_path, pig_path, output_path,
+            x, y, target_width, target_height,
+            white_thresh, similarity, keep_audio
+        )
+        subprocess.run(cmd, check=True, capture_output=True)
+
+    # 清理临时文件
+    if os.path.exists(tmp_pig):
+        os.remove(tmp_pig)
 
     logger.info("头部替换完成，输出：%s", output_path)
     return output_path
+
+
+def _build_ffmpeg_command(
+    video_path: str,
+    pig_path: str,
+    output_path: str,
+    x: int, y: int,
+    target_width: int, target_height: int,
+    white_thresh: int,
+    similarity: float,
+    keep_audio: bool,
+) -> List[str]:
+    """构建使用滤镜链的 FFmpeg 命令（回退方案）。输出视频带 [outv] 标签，保证音轨来自第一路输入（ElevenLabs 音频）。"""
+    # overlay 输出命名为 [outv]，便于 -map 明确指定音视频流
+    filter_complex = (
+        f"[1:v]colorkey=0xFFFFFF:{similarity}:0.0,scale={target_width}:{target_height}[pig];"
+        f"[0:v][pig]overlay={x}:{y}[outv]"
+    )
+    if keep_audio:
+        return [
+            "ffmpeg", "-y",
+            "-i", video_path,
+            "-i", pig_path,
+            "-filter_complex", filter_complex,
+            "-map", "[outv]", "-map", "0:a:0",
+            "-c:v", "libx264", "-preset", "fast", "-crf", "23", "-r", "25",
+            "-c:a", "copy",
+            output_path
+        ]
+    else:
+        return [
+            "ffmpeg", "-y",
+            "-i", video_path,
+            "-i", pig_path,
+            "-filter_complex", filter_complex,
+            "-map", "[outv]",
+            "-c:v", "libx264", "-preset", "fast", "-crf", "23", "-r", "25",
+            output_path
+        ]
