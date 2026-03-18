@@ -12,7 +12,13 @@
 """
 import argparse
 import logging
+import os
+import sys
 from typing import List, Optional, Tuple
+
+# 导入配置
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config import CARTOON_HEAD_SCALE, CARTOON_HEAD_WHITE_THRESH
 
 # 默认日志配置：仅在直接运行本模块时生效，被 import 时由调用方控制
 logging.basicConfig(
@@ -221,10 +227,10 @@ def replace_head(
     video_path: str,
     pig_path: str,
     output_path: str,
-    head_scale: float = 10,
+    head_scale: float = CARTOON_HEAD_SCALE,
     y_offset_ratio: float = 0.25,
     smooth_window: int = 5,
-    white_thresh: int = 240,
+    white_thresh: int = CARTOON_HEAD_WHITE_THRESH,
     keep_audio: bool = True,
     ffmpeg_params: Optional[list] = None,
     detect_interval: int = 30,
@@ -237,10 +243,10 @@ def replace_head(
         video_path      : 原始人物视频路径
         pig_path        : 卡通头部视频路径（白色背景 MP4）
         output_path     : 输出 MP4 路径
-        head_scale      : 卡通头相对人脸大小的缩放倍数，默认 1.8
+        head_scale      : 卡通头相对人脸大小的缩放倍数（默认从 config.py 读取）
         y_offset_ratio  : 卡通头中心向上偏移比例，默认 0.25
         smooth_window   : bbox 平滑窗口帧数，防抖动，默认 5
-        white_thresh    : 白色背景抠图阈值（0~255），默认 240
+        white_thresh    : 白色背景抠图阈值（0~255，默认从 config.py 读取）
         keep_audio      : 是否保留原视频音频，默认 True
 
     返回：

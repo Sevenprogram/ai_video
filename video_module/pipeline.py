@@ -27,10 +27,16 @@
 """
 import logging
 import os
+import sys
 import tempfile
 from typing import List, Optional, Tuple
 
 from moviepy import AudioFileClip, VideoFileClip, concatenate_videoclips
+
+# 导入配置
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config import CARTOON_HEAD_SCALE, CARTOON_HEAD_WHITE_THRESH
+
 from synthesis import overlay, replace_audio, replace_head
 
 from core.ffmpeg_fast import (
@@ -52,11 +58,11 @@ def build_video(
     # 时长控制
     target_duration: float = 60.0,
     audio_as_canonical: bool = False,
-    # 猪头参数
-    head_scale: float = 1.8,
+    # 猪头参数（默认从 config.py 读取）
+    head_scale: float = CARTOON_HEAD_SCALE,
     y_offset_ratio: float = 0.25,
     smooth_window: int = 5,
-    white_thresh: int = 240,
+    white_thresh: int = CARTOON_HEAD_WHITE_THRESH,
     # PiP 参数
     pip_scale: float = 0.18,
     pip_position: str = "bottom-right",

@@ -1,0 +1,82 @@
+```json
+[
+  {
+    "id": 1,
+    "start_sec": 0,
+    "end_sec": 14.5,
+    "duration_sec": 14.5,
+    "page_type": "browser",
+    "source": "coinglass",
+    "url": "https://www.coinglass.com/data/liquidation-data",
+    "view": "liquidation_data_overview",
+    "scroll_behavior": "none",
+    "action": "static_view",
+    "text_clip": "The crypto market is absolutely wild right now. Did you see that insane liquidation data from CoinGlass yesterday? We're talking hundreds of millions gone in a flash. [clears throat] It’s a stark reminder of how quickly things can turn. Many traders are struggling to keep up, chasing trends that disappear as fast as they appear."
+  },
+  {
+    "id": 2,
+    "start_sec": 14.5,
+    "end_sec": 26.5,
+    "duration_sec": 12,
+    "page_type": "chart",
+    "source": "coinglass",
+    "url": "https://www.coinglass.com/data/liquidation-heatmap",
+    "view": "btc_liquidation_heatmap",
+    "scroll_behavior": "none",
+    "action": "hover_on_high_liquidation_zones",
+    "text_clip": "This isn't just random noise, though. If you look at the liquidation heatmaps, you can see clear patterns where massive orders are stacked. [smacks lips] These are the zones where price often gets rejected or accelerates violently. Understanding these levels is crucial. It's like seeing the hidden currents in the market."
+  },
+  {
+    "id": 3,
+    "start_sec": 26.5,
+    "end_sec": 59.5,
+    "duration_sec": 33,
+    "page_type": "browser",
+    "source": "ezpro",
+    "url": "https://ezpro.club/chart",
+    "view": "live_kline_signal_free",
+    "scroll_behavior": "none",
+    "action": "static_view",
+    "text_clip": "This is where Ezpro.club's Signal-Free mode and the naked K-line environment really shine. Forget cluttered charts and lagging indicators. [sighs] We're looking purely at price action. Notice how this resistance level here on the naked chart? Price has been testing it repeatedly. In Signal-Free mode, we can clearly identify these key support and resistance zones without any repaint issues. This is the raw, unfiltered truth of the market. The 15-win challenge is designed to build discipline around these very principles, forcing you to stick to a clear strategy."
+  },
+  {
+    "id": 4,
+    "start_sec": 59.5,
+    "end_sec": 83.5,
+    "duration_sec": 24,
+    "page_type": "social",
+    "source": "youtube",
+    "url": "https://www.youtube.com/watch?v=example_video_id",
+    "view": "video_player_with_comments",
+    "scroll_behavior": "scroll_down_slow",
+    "action": "static_view",
+    "text_clip": "I saw a popular YouTube trader claiming their new \"magic indicator\" predicted that entire pump and dump. [chuckles] Honestly, it's mostly hindsight bias and cherry-picked examples. Actual trading isn't about a single indicator; it's about understanding price behavior, market structure, and risk management. [pause] These complex indicator systems often just add noise and confusion, especially when the market is this volatile. Wait... actually, the real edge comes from simplifying, not complicating."
+  },
+  {
+    "id": 5,
+    "start_sec": 83.5,
+    "end_sec": 108.5,
+    "duration_sec": 25,
+    "page_type": "browser",
+    "source": "ezpro",
+    "url": "https://ezpro.club/chart",
+    "view": "live_kline_signal_free",
+    "scroll_behavior": "none",
+    "action": "click_refresh_button",
+    "text_clip": "So, what does this mean for you? It means focusing on the clean charts and disciplined execution. Let's just refresh this page to see the latest price action. [silent] [silent] [silent] See? Pure price."
+  },
+  {
+    "id": 6,
+    "start_sec": 108.5,
+    "end_sec": 121.5,
+    "duration_sec": 13,
+    "page_type": "social",
+    "source": "telegram",
+    "url": "https://t.me/example_group_link",
+    "view": "group_chat_discussion",
+    "scroll_behavior": "scroll_down_slow",
+    "action": "static_view",
+    "text_clip": "If you want to learn how to navigate these choppy waters and master the Signal-Free approach, join our Telegram group. We’re constantly discussing these live market moves and refining our strategies based on real-time data. The link is in the description. Let's get you ready for the next challenge."
+  }
+]
+```

@@ -23,6 +23,7 @@ from config import (
     FEISHU_APP_SECRET as _CFG_FEISHU_APP_SECRET,
     FEISHU_BASE_URL as _CFG_FEISHU_BASE_URL,
     FEISHU_TARGET_CHAT_ID,
+    FEISHU_BOT_CHAT_ID,
     FEISHU_VERIFICATION_TOKEN,
     FEISHU_ENCRYPT_KEY,
 )
@@ -52,6 +53,56 @@ class FeishuClient:
         self.base_url = base_url.rstrip("/")
         self._token: Optional[str] = None
         self._NO_PROXY = {"http": None, "https": None}
+
+    def get_or_create_p2p_chat(self, user_open_id: str) -> str:
+        """
+        获取或创建与用户的 1-on-1 私聊会话，返回 chat_id。
+        user_open_id: 用户的 open_id（以 ou_ 开头）
+        """
+        token = self._get_tenant_token()
+        url = f"{self.base_url}/open-apis/im/v1/chats"
+        payload = {
+            "user_id": user_open_id,
+            "chat_type": "p2p",
+        }
+        r = requests.post(
+            url,
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+            json=payload,
+            timeout=15,
+            proxies=self._NO_PROXY,
+        )
+        data = r.json()
+        if data.get("code") == 0:
+            return data.get("data", {}).get("chat_id", "")
+        if data.get("code") == 1240013:  # chat already exists
+            # 从错误信息中提取 chat_id 或用另一个 API 查询
+            return self._find_p2p_chat(user_open_id) or ""
+        raise RuntimeError(f"创建/获取私聊失败：{data}")
+
+    def _find_p2p_chat(self, user_open_id: str) -> Optional[str]:
+        """查询与用户的私聊 chat_id。"""
+        token = self._get_tenant_token()
+        # 列出当前应用创建的所有私聊
+        url = f"{self.base_url}/open-apis/im/v1/chats"
+        params = {"page_size": 100}
+        r = requests.get(
+            url,
+            headers={"Authorization": f"Bearer {token}"},
+            params=params,
+            timeout=15,
+            proxies=self._NO_PROXY,
+        )
+        data = r.json()
+        if data.get("code") != 0:
+            return None
+        items = data.get("data", {}).get("items", []) or []
+        for item in items:
+            if item.get("chat_type") == "p2p":
+                # p2p chat 的 owner_id 或 member_ids 包含目标用户
+                if user_open_id in (item.get("owner_id", ""),):
+                    return item.get("chat_id")
+        return None
 
     def _get_tenant_token(self) -> str:
         if self._token:
@@ -254,8 +305,52 @@ class FeishuUserAuth:
         text: str,
         receive_id_type: str = "chat_id",
     ) -> Dict[str, Any]:
-        """以用户身份发送文本消息。receive_id_type: chat_id | open_id"""
-        user_token = self.get_user_access_token()
+        """以用户身份发送文本消息。receive_id_type: chat_id | open_id | user_id。
+
+        若未指定 receive_id_type，会自动推断：
+        - 以 "ou_" 开头 → open_id（用户/机器人私聊）
+        - 以 "oc_" 开头 → chat_id（群聊）
+        - 其他保持原值
+        """
+        # 自动推断 receive_id_type
+        if receive_id_type == "chat_id":
+            if receive_id.startswith("ou_"):
+                receive_id_type = "open_id"
+            elif receive_id.startswith("oc_"):
+                receive_id_type = "chat_id"
+            # 其他格式保持 chat_id
+        return self._send_message(receive_id, text, receive_id_type, as_bot=False)
+
+    def send_text_as_bot(
+        self,
+        receive_id: str,
+        text: str,
+        receive_id_type: str = "chat_id",
+    ) -> Dict[str, Any]:
+        """以机器人身份发送文本消息到私聊（需要用户先与机器人有会话）。"""
+        # 自动推断
+        if receive_id_type == "chat_id":
+            if receive_id.startswith("ou_"):
+                receive_id_type = "open_id"
+            elif receive_id.startswith("oc_"):
+                receive_id_type = "chat_id"
+        return self._send_message(receive_id, text, receive_id_type, as_bot=True)
+
+    def _send_message(
+        self,
+        receive_id: str,
+        text: str,
+        receive_id_type: str,
+        as_bot: bool = False,
+    ) -> Dict[str, Any]:
+        """内部方法：发送消息。as_bot=True 时用机器人身份发送。"""
+        # 获取 token：用户身份 或 应用身份（机器人）
+        if as_bot:
+            client = FeishuClient(self.app_id, self.app_secret, self.base_url)
+            token = client._get_tenant_token()
+        else:
+            token = self.get_user_access_token()
+
         url = f"{self.base_url}/open-apis/im/v1/messages"
         params = {"receive_id_type": receive_id_type}
         payload = {
@@ -267,7 +362,7 @@ class FeishuUserAuth:
             url,
             params=params,
             headers={
-                "Authorization": f"Bearer {user_token}",
+                "Authorization": f"Bearer {token}",
                 "Content-Type": "application/json",
             },
             json=payload,
@@ -275,10 +370,10 @@ class FeishuUserAuth:
             proxies=self._NO_PROXY,
         )
         if not r.ok:
-            raise RuntimeError(f"以用户身份发送消息失败（{r.status_code}）：{r.text}")
+            raise RuntimeError(f"发送消息失败（{r.status_code}）：{r.text}")
         data = r.json()
         if data.get("code") != 0:
-            raise RuntimeError(f"以用户身份发送消息失败：{data}")
+            raise RuntimeError(f"发送消息失败：{data}")
         return data
 
 
@@ -387,6 +482,8 @@ def send_as_user_and_wait_reply(
     _app_id = app_id or FEISHU_APP_ID
     _app_secret = app_secret or FEISHU_APP_SECRET
     user_auth = FeishuUserAuth(app_id=_app_id, app_secret=_app_secret)
+    # 优先使用传入的 chat_id，否则使用群聊
+    # 注：若要使用机器人私聊，需配置 FEISHU_BOT_CHAT_ID（需要用户在应用可用范围内）
     target_chat_id = chat_id or FEISHU_TARGET_CHAT_ID
 
     waiter = FeishuReplyWaiter(

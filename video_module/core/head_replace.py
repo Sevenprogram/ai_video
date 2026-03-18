@@ -12,11 +12,16 @@
 import logging
 import os
 import subprocess
+import sys
 from collections import deque
 from typing import Optional, Tuple, List
 
 import cv2
 import numpy as np
+
+# 导入配置
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+from config import CARTOON_HEAD_SCALE, CARTOON_HEAD_WHITE_THRESH
 
 from .utils import check_video_path, ensure_output_dir
 
@@ -27,13 +32,13 @@ logger = logging.getLogger(__name__)
 
 def _remove_white_bg(
     img_bgr: np.ndarray,
-    white_thresh: int = 240,
+    white_thresh: int = CARTOON_HEAD_WHITE_THRESH,
     blur_size: int = 5,
 ) -> np.ndarray:
     """
     将纯白背景转为透明，返回 BGRA 图像。
 
-    white_thresh : 灰度值超过此阈值视为白色背景（0~255）
+    white_thresh : 灰度值超过此阈值视为白色背景（0~255，默认从 config.py 读取）
     blur_size    : 遮罩边缘高斯模糊核大小，0 表示不模糊
 
     优化：使用向量化操作代替循环，提高处理速度
@@ -124,10 +129,10 @@ def replace_head(
     video_path: str,
     pig_path: str,
     output_path: str,
-    head_scale: float = 1.8,
+    head_scale: float = CARTOON_HEAD_SCALE,
     y_offset_ratio: float = 0.25,
     smooth_window: int = 5,
-    white_thresh: int = 240,
+    white_thresh: int = CARTOON_HEAD_WHITE_THRESH,
     keep_audio: bool = True,
     ffmpeg_params: Optional[List[str]] = None,
     detect_interval: int = 30,  # detect_once=False 时生效：每 N 帧检测一次
@@ -140,7 +145,7 @@ def replace_head(
         video_path      : 原始人物视频路径
         pig_path        : 卡通头部视频路径（白色背景 MP4）
         output_path     : 输出 MP4 路径
-        head_scale      : 卡通头相对人脸 bbox 的缩放倍数，默认 1.8
+        head_scale      : 卡通头相对人脸 bbox 的缩放倍数（默认从 config.py 读取）
                           （需要比脸大，才能盖住头发和额头）
         y_offset_ratio  : 卡通头中心相对 bbox 中心的上移比例，默认 0.25
                           （头顶占头部更多比例，需要往上偏）

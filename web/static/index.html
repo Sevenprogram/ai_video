@@ -651,17 +651,20 @@ textarea#prompt::placeholder {
         </label>
         <label class="checkbox-item">
           <input type="checkbox" id="use-local-videos" />
-          <span>使用本地视频（跳过 OpenClaw）</span>
+          <span>使用本地录屏（跳过 OpenClaw 录屏步骤）</span>
         </label>
       </div>
     </div>
     
-    <div class="panel-section select-group" id="localVideosSection" style="display: none;">
+    <div class="panel-section select-group">
       <div class="select-label">数字人视频（文件夹）</div>
       <select id="local-digital-human" class="select-field"></select>
       <div class="select-label">卡通头部视频</div>
       <select id="local-cartoon-head" class="select-field"></select>
-      <div class="select-label">录屏视频</div>
+    </div>
+    
+    <div class="panel-section select-group" id="localRecordingSection" style="display: none;">
+      <div class="select-label">录屏视频（勾选「使用本地录屏」时选用）</div>
       <select id="local-recording" class="select-field"></select>
     </div>
     
@@ -753,9 +756,9 @@ function esc(s) {
 }
 
 async function loadLocalVideoSelects() {
-  const useLocalVideos = document.getElementById('use-local-videos').checked;
-  document.getElementById('localVideosSection').style.display = useLocalVideos ? 'flex' : 'none';
-  
+  const useLocalRecording = document.getElementById('use-local-videos').checked;
+  document.getElementById('localRecordingSection').style.display = useLocalRecording ? 'flex' : 'none';
+
   try {
     const [videosRes, defaultsRes] = await Promise.all([fetch('/api/local-videos'), fetch('/api/local-video-defaults')]);
     if (!videosRes.ok || !defaultsRes.ok) return;
