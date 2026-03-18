@@ -11,7 +11,7 @@
 """
 import logging
 import os
-import tempfile
+import subprocess
 from collections import deque
 from typing import Optional, Tuple, List
 
@@ -35,11 +35,16 @@ def _remove_white_bg(
 
     white_thresh : 灰度值超过此阈值视为白色背景（0~255）
     blur_size    : 遮罩边缘高斯模糊核大小，0 表示不模糊
-    """
-    gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
 
-    # 白色区域 → 0（透明），非白色 → 255（不透明）
-    _, mask = cv2.threshold(gray, white_thresh, 255, cv2.THRESH_BINARY_INV)
+    优化：使用向量化操作代替循环，提高处理速度
+    """
+    # 使用 cv2.inRange 进行向量化阈值处理，比循环快很多
+    lower_white = np.array([white_thresh, white_thresh, white_thresh], dtype=np.uint8)
+    upper_white = np.array([255, 255, 255], dtype=np.uint8)
+    mask = cv2.inRange(img_bgr, lower_white, upper_white)
+
+    # 反转：白色区域变0，非白色变255
+    mask = cv2.bitwise_not(mask)
 
     # 形态学处理：先腐蚀去白边毛刺，再膨胀还原内容
     kernel = np.ones((3, 3), np.uint8)
@@ -125,6 +130,8 @@ def replace_head(
     white_thresh: int = 240,
     keep_audio: bool = True,
     ffmpeg_params: Optional[List[str]] = None,
+    detect_interval: int = 30,  # detect_once=False 时生效：每 N 帧检测一次
+    detect_once: bool = True,   # 数字人固定机位，仅首帧检测一次，大幅加速
 ) -> str:
     """
     用卡通头部视频替换原视频中的人脸区域。
@@ -140,6 +147,7 @@ def replace_head(
         smooth_window   : bbox 平滑窗口大小，默认 5 帧
         white_thresh    : 白色背景阈值，默认 240
         keep_audio      : 是否保留原视频音频，默认 True
+        detect_interval : 每 N 帧检测一次人脸（中间帧复用上次 bbox），默认 5，可显著加速
 
     返回：
         output_path
@@ -162,8 +170,25 @@ def replace_head(
     logger.info("原始视频：%dx%d, %.1ffps, %d帧", src_w, src_h, src_fps, total_frames)
     logger.info("猪头视频：%d帧，将循环使用", pig_total)
 
+    # 预加载猪头视频所有帧到内存（避免每帧重复读取和解码）
+    logger.info("预加载猪头视频帧...")
+    pig_frames = []
+    pig_cap_all = cv2.VideoCapture(pig_path)
+    while True:
+        ret, frame = pig_cap_all.read()
+        if not ret:
+            break
+        pig_frames.append(frame)
+    pig_cap_all.release()
+    pig_total = len(pig_frames)
+    logger.info("猪头视频预加载完成：%d 帧", pig_total)
+
+    # 预计算猪头的 BGRA 版本（白色背景去除后），根据不同的缩放尺寸缓存
+    pig_bgra_cache = {}  # size -> bgra
+
     # 临时文件保存无音频的处理结果（后续用 moviepy 附回音频）
     tmp_path = output_path.replace(".mp4", "_tmp_noaudio.mp4")
+    # 使用 mp4v 编码器，兼容性更好
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
     writer = cv2.VideoWriter(tmp_path, fourcc, src_fps, (src_w, src_h))
 
@@ -185,28 +210,31 @@ def replace_head(
         if not ret:
             break
 
-        # ── 取猪头当前帧（循环） ──────────────────────────
-        pig_cap.set(cv2.CAP_PROP_POS_FRAMES, pig_idx % pig_total)
-        ret_pig, pig_frame = pig_cap.read()
-        if not ret_pig:
-            pig_cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-            _, pig_frame = pig_cap.read()
+        # ── 取猪头当前帧（从预加载的帧数组中循环获取，避免重复IO） ─────
+        pig_frame = pig_frames[pig_idx % pig_total]
         pig_idx += 1
 
-        # ── 人脸检测（灰度图检测速度更快） ───────────────
-        gray = cv2.cvtColor(src_frame, cv2.COLOR_BGR2GRAY)
-        faces = face_cascade.detectMultiScale(
-            gray,
-            scaleFactor=1.1,
-            minNeighbors=5,
-            minSize=(80, 80),    # 过滤太小的误检
+        # ── 人脸检测 ─────────────────────────────────────────────────────
+        # detect_once=True（数字人固定机位）：仅首帧检测一次，后续全复用，大幅加速
+        # detect_once=False：每 detect_interval 帧检测一次
+        should_detect = (
+            (detect_once and last_bbox is None) or
+            (not detect_once and frame_idx % detect_interval == 0)
         )
-
-        if len(faces) > 0:
-            # 取面积最大的人脸（过滤误检）
-            faces_sorted = sorted(faces, key=lambda f: f[2] * f[3], reverse=True)
-            fx, fy, fw, fh = faces_sorted[0]
-            last_bbox = _smooth_bbox(bbox_buf, (fx, fy, fw, fh))
+        if should_detect:
+            gray = cv2.cvtColor(src_frame, cv2.COLOR_BGR2GRAY)
+            faces = face_cascade.detectMultiScale(
+                gray,
+                scaleFactor=1.15,
+                minNeighbors=5,
+                minSize=(80, 80),
+            )
+            if len(faces) > 0:
+                faces_sorted = sorted(faces, key=lambda f: f[2] * f[3], reverse=True)
+                fx, fy, fw, fh = faces_sorted[0]
+                last_bbox = _smooth_bbox(bbox_buf, (fx, fy, fw, fh))
+                if detect_once:
+                    logger.info("首帧检测完成，人脸位置已固定，后续帧直接复用（大幅加速）")
 
         # ── 猪头缩放 & 定位 ───────────────────────────────
         if last_bbox is not None:
@@ -215,10 +243,11 @@ def replace_head(
             # 目标尺寸：比人脸大 head_scale 倍
             target_size = int(fw * head_scale)
             if target_size > 0 and pig_frame is not None:
-                pig_resized = cv2.resize(pig_frame, (target_size, target_size))
-
-                # 去除白色背景，生成 alpha 通道
-                pig_bgra = _remove_white_bg(pig_resized, white_thresh)
+                # 使用缓存的 BGRA 帧（避免每帧重复处理白色背景）
+                if target_size not in pig_bgra_cache:
+                    pig_resized = cv2.resize(pig_frame, (target_size, target_size))
+                    pig_bgra_cache[target_size] = _remove_white_bg(pig_resized, white_thresh)
+                pig_bgra = pig_bgra_cache[target_size]
 
                 # 定位：以人脸 bbox 中心为基准，向上偏移
                 cx = fx + fw // 2
@@ -245,25 +274,38 @@ def replace_head(
 
     # ── 附回原始音频 ──────────────────────────────────────
     if keep_audio:
-        logger.info("附回原始音频...")
-        from moviepy import VideoFileClip
-        processed = VideoFileClip(tmp_path)
-        original  = VideoFileClip(video_path)
+        logger.info("附回原始音频（FFmpeg 方式）...")
+        # 使用 FFmpeg 直接合并，避免 moviepy 二次编码
+        try:
+            subprocess.run([
+                "ffmpeg", "-y", "-i", tmp_path, "-i", video_path,
+                "-c:v", "copy", "-map", "0:v:0", "-map", "1:a:0",
+                "-shortest", "-c:a", "aac", output_path
+            ], check=True, capture_output=True)
+            logger.info("FFmpeg 音频附加完成")
+        except subprocess.CalledProcessError as e:
+            logger.warning("FFmpeg 附加音频失败，回退 moviepy: %s", e)
+            from moviepy import VideoFileClip
+            processed = VideoFileClip(tmp_path)
+            original = VideoFileClip(video_path)
 
-        if original.audio is not None:
-            final = processed.with_audio(original.audio)
-        else:
-            logger.warning("原视频无音频，跳过音频附加")
-            final = processed
+            if original.audio is not None:
+                final = processed.with_audio(original.audio)
+            else:
+                logger.warning("原视频无音频，跳过音频附加")
+                final = processed
 
-        write_kw = dict(codec="libx264", audio_codec="aac", logger="bar")
-        if ffmpeg_params:
-            write_kw["ffmpeg_params"] = ffmpeg_params
-        final.write_videofile(output_path, **write_kw)
-        final.close()
-        processed.close()
-        original.close()
-        os.remove(tmp_path)
+            write_kw = dict(codec="libx264", audio_codec="aac", logger="bar")
+            if ffmpeg_params:
+                write_kw["ffmpeg_params"] = ffmpeg_params
+            final.write_videofile(output_path, **write_kw)
+            final.close()
+            processed.close()
+            original.close()
+
+        # 清理临时文件
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
     else:
         os.rename(tmp_path, output_path)
 

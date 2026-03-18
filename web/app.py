@@ -19,7 +19,14 @@ from pydantic import BaseModel
 from typing import Optional
 
 # 导入主流程
-from main import build_storyboard_prompt, build_recording_instruction, run_workflow, run_recording_full_pipeline, DEFAULT_PROMPT, prompt_to_recording_instruction
+from main import (
+    build_storyboard_prompt,
+    build_recording_instruction,
+    run_workflow,
+    run_recording_full_pipeline,
+    DEFAULT_PROMPT,
+    prompt_to_recording_instruction,
+)
 from openclaw import send_as_user_and_wait_reply, get_feishu_event_handler
 from config import (
     OPENCLAW_REPLY_TIMEOUT,
@@ -369,6 +376,22 @@ def list_local_videos(source: Optional[str] = Query(None)):
     return result
 
 
+@app.get("/api/recording/spoken-scripts")
+def list_spoken_scripts():
+    """
+    列出 video_module/video_shoot/spoken_script 目录下的文稿文件（.txt）。
+    用于口播文稿来源选项 3：选择本地保存的分镜文稿。
+    """
+    base = ROOT / "video_module" / "video_shoot" / "spoken_script"
+    if not base.exists() or not base.is_dir():
+        return []
+    files = []
+    for f in sorted(base.iterdir(), key=lambda x: x.stat().st_mtime, reverse=True):
+        if f.is_file() and f.suffix.lower() in (".txt", ".md"):
+            files.append(f.name)
+    return files[:50]
+
+
 @app.get("/api/local-video-defaults")
 def get_local_video_defaults():
     """返回数字人、卡通、录屏的默认路径。数字人为子文件夹名（如 jirian），合成该文件夹内视频。"""
@@ -402,6 +425,10 @@ class CreateRecordingJobRequest(BaseModel):
     local_digital_human: Optional[str] = None
     local_cartoon_head: Optional[str] = None
     local_recording: Optional[str] = None
+    # 口播文稿来源（本地视频时生效）：ai_analyze | manual_storyboard | local_file
+    script_source: Optional[str] = "manual_storyboard"
+    script_storyboard: Optional[str] = None  # manual_storyboard 时的分镜内容
+    script_local_file: Optional[str] = None  # local_file 时的文件名
 
 
 def _log_recording(job_id: str, msg: str) -> None:
@@ -432,6 +459,9 @@ def create_recording_job(req: CreateRecordingJobRequest):
             "local_digital_human": req.local_digital_human or "",
             "local_cartoon_head": req.local_cartoon_head or "",
             "local_recording": req.local_recording or "",
+            "script_source": req.script_source or "manual_storyboard",
+            "script_storyboard": req.script_storyboard or "",
+            "script_local_file": req.script_local_file or "",
             "skip_openclaw": False,
             "extend_openclaw": False,
             "openclaw_manual_filename": None,
@@ -638,6 +668,9 @@ def run_recording_pipeline(job_id: str, duration_minutes: Optional[int] = Query(
     openclaw_reply = rj.get("openclaw_reply") or ""
     output_filename = rj.get("output_filename") or "recording.mp4"
     dur = duration_minutes if duration_minutes is not None else VIDEO_DURATION_MINUTES
+    script_source = rj.get("script_source") or "manual_storyboard"
+    script_storyboard = rj.get("script_storyboard") or ""
+    script_local_file = rj.get("script_local_file") or ""
 
     def log_fn(step: str, msg: str):
         _log_recording(job_id, f"[{step}] {msg}")
@@ -657,6 +690,9 @@ def run_recording_pipeline(job_id: str, duration_minutes: Optional[int] = Query(
                 output_filename=Path(output_filename).name if output_filename else "recording.mp4",
                 log_fn=log_fn,
                 outputs_base=str(OUTPUTS),
+                script_source=script_source,
+                script_storyboard=script_storyboard or None,
+                script_local_file=script_local_file or None,
             )
             with jobs_lock:
                 if job_id in recording_jobs:

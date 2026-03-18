@@ -66,8 +66,8 @@ def _gemini_complete(prompt: str) -> str:
 
 
 def gemini_complete_only(prompt: str) -> str:
-    """始终使用 config 中的 Gemini（GEMINI_API_KEY/GEMINI_MODEL），不随 LLM_PROVIDER 切换。"""
-    return _gemini_complete(prompt)
+    """始终使用 Jeniya 中转站调用 Gemini（不随 LLM_PROVIDER 切换）。"""
+    return _jeniya_complete(prompt)
 
 
 def jeniya_complete_only(prompt: str) -> str:

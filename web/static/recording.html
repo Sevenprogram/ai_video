@@ -181,6 +181,22 @@ a.download-link:hover { text-decoration: underline; }
         <label style="font-size:10px;color:var(--muted)">录屏视频 <span id="recording-hint" style="color:var(--accent)"></span></label>
         <select id="local-recording" class="local-video-select"></select>
       </div>
+      <div class="script-source-section hidden" id="scriptSourceSection">
+        <label style="font-size:10px;color:var(--muted)">口播文稿来源</label>
+        <select id="script-source" class="local-video-select">
+          <option value="ai_analyze">1. AI 分析视频内容生成</option>
+          <option value="manual_storyboard">2. 输入分镜内容，AI 生成</option>
+          <option value="local_file">3. 选择本地文稿文件</option>
+        </select>
+        <div class="script-storyboard-row hidden" id="scriptStoryboardRow">
+          <label style="font-size:10px;color:var(--muted)">分镜主要内容</label>
+          <textarea id="script-storyboard" placeholder="输入视频各分镜的主要内容，AI 将据此生成口播文稿…" style="height:80px;resize:vertical;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;padding:8px;margin-top:4px"></textarea>
+        </div>
+        <div class="script-local-row hidden" id="scriptLocalRow">
+          <label style="font-size:10px;color:var(--muted)">选择本地文稿（spoken_script/）</label>
+          <select id="script-local-file" class="local-video-select"></select>
+        </div>
+      </div>
       <div class="skip-row hidden" id="skipRow">
         <button class="btn-skip" id="skipLatest">使用最新视频继续</button>
         <button class="btn-skip" id="skipFile">使用指定文件继续</button>
@@ -250,17 +266,30 @@ function esc(s) {
 function updateMode() {
   const isLocal = document.getElementById('mode').value === 'local';
   document.getElementById('promptSection').classList.toggle('hidden', isLocal);
+  document.getElementById('scriptSourceSection').classList.toggle('hidden', !isLocal);
   const rec = document.getElementById('local-recording');
   const hint = document.getElementById('recording-hint');
   if (hint) hint.textContent = (!isLocal && rec && rec.value) ? '（将跳过 OpenClaw）' : '';
+  updateScriptSourceVisibility();
+}
+
+function updateScriptSourceVisibility() {
+  const src = document.getElementById('script-source').value;
+  document.getElementById('scriptStoryboardRow').classList.toggle('hidden', src !== 'manual_storyboard');
+  document.getElementById('scriptLocalRow').classList.toggle('hidden', src !== 'local_file');
 }
 
 document.getElementById('mode').addEventListener('change', updateMode);
 document.getElementById('local-recording').addEventListener('change', updateMode);
+document.getElementById('script-source').addEventListener('change', updateScriptSourceVisibility);
 
 async function loadLocalVideoSelects() {
   try {
-    const [videosRes, defaultsRes] = await Promise.all([fetch('/api/local-videos'), fetch('/api/local-video-defaults')]);
+    const [videosRes, defaultsRes, scriptsRes] = await Promise.all([
+      fetch('/api/local-videos'),
+      fetch('/api/local-video-defaults'),
+      fetch('/api/recording/spoken-scripts'),
+    ]);
     if (!videosRes.ok || !defaultsRes.ok) return;
     const data = await videosRes.json();
     const defaults = await defaultsRes.json();
@@ -280,6 +309,11 @@ async function loadLocalVideoSelects() {
       const files = data[key] || [];
       sel.innerHTML = '<option value="">-- 不选择 --</option>' + files.map(f => '<option value="' + esc(f) + '"' + (f === df ? ' selected' : '') + '>' + esc(f) + '</option>').join('');
     });
+    const scriptSel = document.getElementById('script-local-file');
+    if (scriptSel && scriptsRes.ok) {
+      const scripts = await scriptsRes.json();
+      scriptSel.innerHTML = '<option value="">-- 选择文件 --</option>' + (scripts || []).map(f => '<option value="' + esc(f) + '">' + esc(f) + '</option>').join('');
+    }
     updateMode();
   } catch (_) {}
 }
@@ -293,12 +327,22 @@ async function startJob() {
   const localDigitalHuman = document.getElementById('local-digital-human').value.trim() || null;
   const localCartoonHead = document.getElementById('local-cartoon-head').value.trim() || null;
   const localRecording = document.getElementById('local-recording').value.trim() || null;
+  const scriptSource = document.getElementById('script-source').value || 'manual_storyboard';
+  const scriptStoryboard = document.getElementById('script-storyboard').value.trim() || null;
+  const scriptLocalFile = document.getElementById('script-local-file').value.trim() || null;
   if (!useLocalVideos && !prompt && !localRecording) {
     alert('请输入提示词，或选择录屏视频');
     return;
   }
-  if (useLocalVideos || localRecording) {
-    // 本地模式或已选录屏视频：跳过 OpenClaw，直接完成
+  if (useLocalVideos && localRecording) {
+    if (scriptSource === 'manual_storyboard' && !scriptStoryboard) {
+      alert('请输入分镜主要内容，或选择其他口播文稿来源');
+      return;
+    }
+    if (scriptSource === 'local_file' && !scriptLocalFile) {
+      alert('请选择本地文稿文件，或选择其他口播文稿来源');
+      return;
+    }
   }
   document.getElementById('btn-run').disabled = true;
   document.getElementById('btn-icon').innerHTML = '<span class="spinner" style="border-top-color:#000"></span>';
@@ -309,13 +353,16 @@ async function startJob() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        prompt: useLocalVideos ? null : prompt,
+        prompt: useLocalVideos ? (scriptSource === 'manual_storyboard' ? scriptStoryboard : null) : prompt,
         output_filename: outputFilename,
         wait_openclaw: waitOpenclaw,
         use_local_videos: useLocalVideos,
         local_digital_human: localDigitalHuman,
         local_cartoon_head: localCartoonHead,
         local_recording: localRecording,
+        script_source: useLocalVideos ? scriptSource : 'manual_storyboard',
+        script_storyboard: useLocalVideos ? scriptStoryboard : null,
+        script_local_file: useLocalVideos ? scriptLocalFile : null,
       })
     });
     if (!res.ok) throw new Error(await res.text());

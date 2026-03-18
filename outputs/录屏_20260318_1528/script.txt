@@ -1,0 +1,55 @@
+Let's get this done ... [pause]
+
+Alright, so first things first, we need to navigate to the main dashboard. You can see it right here ... [pause]
+
+Now, locate the "Projects" tab on the left-hand sidebar. It's pretty straightforward. Click on that ... [pause]
+
+Okay, once you're in the Projects section, you'll see a list of all your current projects. We're looking for the one titled "Q3 Marketing Campaign." There it is ... [pause]
+
+Go ahead and click on the project name to open it up. This will take us to the project's overview page ... [pause]
+
+Now, on this page, we need to find the "Tasks" sub-section. It's usually located towards the top, below the project title. There we go ... [pause]
+
+Within the Tasks section, you'll see a breakdown of all the individual tasks associated with this campaign. We're interested in the "Content Creation" task. See it here? ... [pause]
+
+Click on the "Content Creation" task. This will open up the details and assigned team members for this specific task ... [pause]
+
+You'll notice a few different fields here. We have the "Status," "Due Date," and importantly, the "Assigned To" field ... [pause]
+
+Let's update the status. It's currently "In Progress." We're going to change it to "Under Review." Just click the dropdown menu ... [pause]
+
+And select "Under Review." Perfect ... [pause]
+
+Now, let's add a comment. This is where you can provide any necessary feedback or notes. I'm going to type in, "Reviewing all assets before final approval." ... [pause] [smacks lips]
+
+See that little comment box? Just type directly into it. Easy peasy ... [pause]
+
+Alright, now we need to assign a reviewer. We'll click on the "Assigned To" field. This will bring up a list of team members ... [pause]
+
+We want to assign this to Sarah Jenkins. So, scroll down or type "Sarah" to find her name. There she is ... [pause]
+
+Click on Sarah's name to assign it to her. Done ... [pause]
+
+Now, the crucial part: saving our changes. Look for the "Save" button, usually located at the bottom of the page or in the header. Here it is ... [pause]
+
+Click that "Save" button. You should see a confirmation message pop up, indicating that the task has been updated successfully ... [pause]
+
+Great. Now, let's navigate back to the main project overview page. We can do this by clicking the project name again at the top, or by using the breadcrumbs ... [pause]
+
+We're back on the project overview. Now, let's check the "Progress" tab. This tab usually shows a visual representation of the project's progress ... [pause]
+
+As you can see, the "Content Creation" task has moved to the "Under Review" stage. This reflects our update ... [pause] [chuckles]
+
+It's important to keep this updated so everyone on the team knows where things stand. [clears throat]
+
+Okay, final step for this demonstration. Let's go back to the "Tasks" section and mark this "Content Creation" task as complete *after* it's been approved. But for now, we'll leave it as "Under Review." ... [pause]
+
+And that's how you update a task's status, add comments, and assign it to a team member within the project management system. ... [pause]
+
+Pretty straightforward, wouldn't you say? ... [pause]
+
+Now, if we were to get approval, we'd come back here, change the status to "Completed," and potentially add another comment about the final approval. ... [pause]
+
+But for this demo, we've covered the core functionalities. ... [pause]
+
+Alright, that concludes this quick walkthrough. ... [pause]

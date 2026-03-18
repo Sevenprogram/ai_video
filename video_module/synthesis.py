@@ -227,6 +227,8 @@ def replace_head(
     white_thresh: int = 240,
     keep_audio: bool = True,
     ffmpeg_params: Optional[list] = None,
+    detect_interval: int = 30,
+    detect_once: bool = True,
 ) -> str:
     """
     用卡通头部视频替换原视频中的人脸区域。
@@ -262,6 +264,8 @@ def replace_head(
         white_thresh=white_thresh,
         keep_audio=keep_audio,
         ffmpeg_params=ffmpeg_params,
+        detect_interval=detect_interval,
+        detect_once=detect_once,
     )
 
 

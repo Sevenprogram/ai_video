@@ -33,6 +33,13 @@ from typing import List, Optional, Tuple
 from moviepy import AudioFileClip, VideoFileClip, concatenate_videoclips
 from synthesis import overlay, replace_audio, replace_head
 
+from core.ffmpeg_fast import (
+    concat_and_trim,
+    overlay_fast,
+    replace_audio_fast,
+    _ffmpeg_available,
+)
+
 log = logging.getLogger(__name__)
 
 
@@ -61,6 +68,8 @@ def build_video(
     skip_existing: bool = False,
     # 编码加速（preset: ultrafast/fast/medium）
     ffmpeg_preset: str = "fast",
+    # 猪头替换：人脸位置基本不变时，每 N 帧检测一次即可，默认 30（大幅加速）
+    detect_interval: int = 30,
 ) -> str:
     """
     完整视频合成流水线。
@@ -84,6 +93,7 @@ def build_video(
         pip_crop        : PiP 小窗裁剪区域 (x1,y1,x2,y2)，去除白边
         work_dir        : 中间文件存放目录，默认 'output'
         skip_existing   : True 时跳过已存在的中间步骤，方便断点续跑
+        detect_interval : 猪头替换时每 N 帧检测一次人脸，默认 30（人脸基本不动时大幅加速）
 
     返回：
         output_path
@@ -96,7 +106,7 @@ def build_video(
             target_duration = round(ac.duration, 2)
         log.info("以音频为时长基准：%.2fs", target_duration)
 
-    ffmpeg_params = ["-preset", ffmpeg_preset]
+    ffmpeg_params = ["-preset", ffmpeg_preset, "-threads", "4"]
 
     # 中间文件路径
     path_concat   = os.path.join(work_dir, "_step1_concat.mp4")
@@ -109,16 +119,24 @@ def build_video(
     else:
         log.info("=== Step 1：拼接 %d 个视频，裁剪至 %.0fs ===",
                  len(clip_paths), target_duration)
-        clips = [VideoFileClip(p) for p in clip_paths]
-        merged = concatenate_videoclips(clips, method="compose")
-        trimmed = merged.subclipped(0, min(target_duration, merged.duration))
-        trimmed.write_videofile(path_concat, codec="libx264",
-                                audio_codec="aac", logger="bar",
-                                ffmpeg_params=ffmpeg_params)
-        trimmed.close()
-        merged.close()
-        for c in clips:
-            c.close()
+        use_ffmpeg = _ffmpeg_available()
+        try:
+            if use_ffmpeg:
+                concat_and_trim(clip_paths, path_concat, target_duration, ffmpeg_preset)
+            else:
+                raise RuntimeError("ffmpeg 不可用")
+        except Exception as e:
+            log.warning("Step 1 FFmpeg 失败，回退 MoviePy: %s", e)
+            clips = [VideoFileClip(p) for p in clip_paths]
+            merged = concatenate_videoclips(clips, method="compose")
+            trimmed = merged.subclipped(0, min(target_duration, merged.duration))
+            trimmed.write_videofile(path_concat, codec="libx264",
+                                    audio_codec="aac", logger="bar",
+                                    ffmpeg_params=ffmpeg_params)
+            trimmed.close()
+            merged.close()
+            for c in clips:
+                c.close()
         log.info("Step 1 完成：%s（%.2fs）", path_concat, target_duration)
 
     # ── Step 2：替换音频 ───────────────────────────────
@@ -126,14 +144,27 @@ def build_video(
         log.info("Step 2 跳过（已存在）：%s", path_audio)
     else:
         log.info("=== Step 2：替换音频 ===")
-        replace_audio(
-            video_path=path_concat,
-            audio_path=audio_path,
-            output_path=path_audio,
-            loop_audio=not audio_as_canonical,
-            trim_to_audio=audio_as_canonical,
-            ffmpeg_params=ffmpeg_params,
-        )
+        use_ffmpeg = _ffmpeg_available()
+        step2_done = False
+        if use_ffmpeg:
+            try:
+                res = replace_audio_fast(
+                    path_concat, audio_path, path_audio,
+                    trim_to_audio=audio_as_canonical,
+                    ffmpeg_preset=ffmpeg_preset,
+                )
+                step2_done = res is not None
+            except Exception as e:
+                log.warning("Step 2 FFmpeg 失败，回退 MoviePy: %s", e)
+        if not step2_done:
+            replace_audio(
+                video_path=path_concat,
+                audio_path=audio_path,
+                output_path=path_audio,
+                loop_audio=not audio_as_canonical,
+                trim_to_audio=audio_as_canonical,
+                ffmpeg_params=ffmpeg_params,
+            )
         log.info("Step 2 完成：%s", path_audio)
 
     # ── Step 3：猪头替换（全尺寸，检测精度最高）─────────
@@ -151,24 +182,47 @@ def build_video(
             white_thresh=white_thresh,
             keep_audio=True,
             ffmpeg_params=ffmpeg_params,
+            detect_interval=detect_interval,
+            detect_once=True,  # 数字人固定机位，仅首帧检测，大幅加速
         )
         log.info("Step 3 完成：%s", path_pig_head)
 
     # ── Step 4：画中画合成 ─────────────────────────────
     log.info("=== Step 4：画中画合成 ===")
-    overlay(
-        main_path=main_path,
-        sub_path=path_pig_head,
-        output_path=output_path,
-        position=pip_position,
-        sub_scale=pip_scale,
-        margin=pip_margin,
-        main_audio=False,
-        sub_audio=True,
-        sub_crop=pip_crop,
-        target_duration=target_duration if audio_as_canonical else None,
-        ffmpeg_params=ffmpeg_params,
-    )
+    use_ffmpeg = _ffmpeg_available()
+    step4_done = False
+    if use_ffmpeg:
+        try:
+            overlay_fast(
+                main_path=main_path,
+                sub_path=path_pig_head,
+                output_path=output_path,
+                position=pip_position,
+                sub_scale=pip_scale,
+                margin=pip_margin,
+                sub_crop=pip_crop,
+                main_audio=False,
+                sub_audio=True,
+                target_duration=target_duration if audio_as_canonical else None,
+                ffmpeg_preset=ffmpeg_preset,
+            )
+            step4_done = True
+        except Exception as e:
+            log.warning("Step 4 FFmpeg 失败，回退 MoviePy: %s", e)
+    if not step4_done:
+        overlay(
+            main_path=main_path,
+            sub_path=path_pig_head,
+            output_path=output_path,
+            position=pip_position,
+            sub_scale=pip_scale,
+            margin=pip_margin,
+            main_audio=False,
+            sub_audio=True,
+            sub_crop=pip_crop,
+            target_duration=target_duration if audio_as_canonical else None,
+            ffmpeg_params=ffmpeg_params,
+        )
     log.info("=== 全部完成，输出：%s ===", output_path)
     return output_path
 
