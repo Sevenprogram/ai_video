@@ -1,20 +1,19 @@
 """
-头部替换模块：用卡通头部视频逐帧覆盖原视频中的人脸区域
+头部替换模块：用卡通头部视频直接覆盖原视频中的人脸区域
 
-流程：
-  1. mediapipe 检测每帧人脸 bbox
-  2. 对 bbox 做滑动平均，消除检测抖动
-  3. 从卡通视频取对应帧（自动循环）
-  4. 抠掉卡通帧的纯白背景，生成 alpha 遮罩
-  5. 将卡通头按 bbox 缩放后 alpha 混合到原始帧
-  6. 所有帧写入临时视频，最后附回原始音频
+简化版（直接覆盖）：
+  1. 首帧检测一次人脸 bbox（数字人固定机位，仅需一次）
+  2. 后续所有帧复用相同位置，不再检测
+  3. 卡通头部视频逐帧覆盖到人脸区域
+  4. 所有帧写入临时视频，最后附回原始音频
+
+注意：本版本适用于数字人视频（固定机位），不适用于移动镜头。
 """
 import logging
 import os
 import subprocess
 import sys
-from collections import deque
-from typing import Optional, Tuple, List
+from typing import Optional, List, Tuple
 
 import cv2
 import numpy as np
