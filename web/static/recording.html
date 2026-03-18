@@ -127,6 +127,9 @@ textarea#prompt:focus { border-color: var(--accent2); }
   background: rgba(62,207,142,.08); border: 1px solid rgba(62,207,142,.25); border-radius: 6px;
   padding: 10px 12px; font-size: 12px; color: var(--accent); font-family: var(--mono); white-space: pre-wrap; word-break: break-all;
 }
+.script-preview { font-size: 11px; color: var(--muted); }
+a.download-link { font-size: 11px; color: var(--accent2); text-decoration: none; display: inline-block; margin-top: 4px; }
+a.download-link:hover { text-decoration: underline; }
 .empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--muted); gap: 8px; padding: 40px; text-align: center; }
 .spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid rgba(255,255,255,.15); border-top-color: var(--accent2); border-radius: 50%; animation: spin .7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -225,11 +228,11 @@ textarea#prompt:focus { border-color: var(--accent2); }
         </div>
       </div>
       <div class="panel">
-        <div class="panel-header">OpenClaw 回复</div>
+        <div class="panel-header">产品预览</div>
         <div class="results-body" id="results-body">
           <div class="empty-state">
-            <div style="font-size:36px;opacity:.3">🖥</div>
-            <p>任务完成后，<br>OpenClaw 的回复将在这里展示。</p>
+            <div style="font-size:36px;opacity:.3">🎬</div>
+            <p>每完成一个步骤，<br>已生成的素材将在这里展示。</p>
           </div>
         </div>
       </div>
@@ -338,9 +341,7 @@ async function selectJob(jobId) {
     setStepState('openclaw', job.status === 'done' ? 'done' : job.status === 'error' ? 'error' : job.status === 'running' ? 'running' : 'pending');
     setStepState('pipeline', (job.pipeline_status === 'done' ? 'done' : job.pipeline_status === 'error' ? 'error' : job.pipeline_status === 'running' ? 'running' : 'pending'));
     (job.logs || []).forEach(e => appendLog({ step: e.step || 'info', msg: e.text || e.msg, ts: e.ts }));
-    if (job.instruction || job.openclaw_reply || job.final_video) {
-      renderResults(job);
-    }
+    renderResults(job);
     if (job.status === 'done' || job.status === 'error') {
       document.getElementById('btn-run').disabled = false;
       document.getElementById('btn-icon').textContent = '▶';
@@ -370,7 +371,7 @@ function subscribeSSE(jobId) {
     if (/回复：|完成|用户选择|跳过等待|超时/.test(text)) {
       setStepState('openclaw', 'done');
       document.getElementById('pipelineRow').classList.remove('hidden');
-      fetch('/api/recording/jobs/' + jobId).then(r => r.ok ? r.json() : null).then(j => { if (j && (j.instruction || j.openclaw_reply)) renderResults(j); });
+      fetch('/api/recording/jobs/' + jobId).then(r => r.ok ? r.json() : null).then(j => { if (j) renderResults(j); });
     }
     if (/\[script\]|\[audio\]|\[pipeline\]/.test(text)) {
       setStepState('pipeline', 'running');
@@ -425,24 +426,37 @@ function setStepState(step, status) {
 
 function renderResults(job) {
   const body = document.getElementById('results-body');
+  const empty = body.querySelector('.empty-state');
+  if (empty) empty.remove();
   body.innerHTML = '';
-  if (job.instruction) {
+
+  if (job.status === 'done') {
+    const b = document.createElement('div');
+    b.className = 'result-block';
+    b.innerHTML = '<div class="result-label">🖥 录屏</div><div class="script-preview">录屏已完成</div>';
+    body.appendChild(b);
+  }
+
+  const pa = job.pipeline_artifacts || {};
+  const folder = job.pipeline_folder || pa.folder || '';
+
+  if (folder && (pa.script || pa.run_dir)) {
     const block = document.createElement('div');
     block.className = 'result-block';
-    block.innerHTML = '<div class="result-label">📋 已发送的录屏指令（AI 转换后）</div><div class="openclaw-reply" style="white-space:pre-wrap;max-height:200px;overflow-y:auto">' + esc(job.instruction) + '</div>';
+    block.innerHTML = '<div class="result-label">📝 口播文稿</div><a class="download-link" href="/api/files/' + esc(folder) + '/script.txt" download>下载 script.txt</a>';
     body.appendChild(block);
   }
-  if (job.openclaw_reply) {
+  if (folder && (pa.audio || pa.run_dir)) {
     const block = document.createElement('div');
     block.className = 'result-block';
-    block.innerHTML = '<div class="result-label">OpenClaw 回复</div><div class="openclaw-reply">' + esc(job.openclaw_reply) + '</div>';
+    block.innerHTML = '<div class="result-label">🔊 音频</div><audio controls style="width:100%;max-height:60px"><source src="/api/files/' + esc(folder) + '/audio.mp3" type="audio/mpeg"></audio><a class="download-link" href="/api/files/' + esc(folder) + '/audio.mp3" download>下载 audio.mp3</a>';
     body.appendChild(block);
   }
   if (job.final_video) {
     const block = document.createElement('div');
     block.className = 'result-block';
     const fn = (job.final_video || '').split('/').pop() || 'final.mp4';
-    block.innerHTML = '<div class="result-label">✅ 最终视频</div><div class="openclaw-reply"><a href="/api/recording/output/' + encodeURIComponent(fn) + '" target="_blank" style="color:var(--accent)">' + esc(fn) + '</a></div>';
+    block.innerHTML = '<div class="result-label">✅ 最终视频</div><video controls style="width:100%;max-height:200px;border-radius:6px"><source src="/api/recording/output/' + encodeURIComponent(fn) + '" type="video/mp4"></video><a class="download-link" href="/api/recording/output/' + encodeURIComponent(fn) + '" download>下载 ' + esc(fn) + '</a>';
     body.appendChild(block);
   }
 }
@@ -471,7 +485,7 @@ async function refreshHistory() {
 
 function resetUI() {
   document.getElementById('log-body').innerHTML = '<div class="empty-state"><div style="font-size:36px;opacity:.3">⏳</div><p>实时日志将在这里显示。</p></div>';
-  document.getElementById('results-body').innerHTML = '<div class="empty-state"><div style="font-size:36px;opacity:.3">🖥</div><p>任务完成后，OpenClaw 的回复将在这里展示。</p></div>';
+  document.getElementById('results-body').innerHTML = '<div class="empty-state"><div style="font-size:36px;opacity:.3">🎬</div><p>每完成一个步骤，<br>已生成的素材将在这里展示。</p></div>';
   setStepState('openclaw', 'pending');
   setStepState('pipeline', 'pending');
   document.getElementById('pipelineRow').classList.add('hidden');

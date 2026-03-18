@@ -84,6 +84,8 @@ def overlay(
     main_audio: bool = True,
     sub_audio: bool = False,
     sub_crop: Optional[Tuple[int, int, int, int]] = None,
+    target_duration: Optional[float] = None,
+    ffmpeg_params: Optional[list] = None,
 ) -> str:
     """
     画中画：将子视频叠加到主视频上。
@@ -133,6 +135,8 @@ def overlay(
         main_audio=main_audio,
         sub_audio=sub_audio,
         sub_crop=sub_crop,
+        target_duration=target_duration,
+        ffmpeg_params=ffmpeg_params,
     )
 
 
@@ -142,27 +146,23 @@ def replace_audio(
     output_path: str,
     loop_audio: bool = True,
     audio_volume: float = 1.0,
+    trim_to_audio: bool = False,
+    ffmpeg_params: Optional[list] = None,
 ) -> str:
     """
     完全替换视频音轨。
 
     参数：
-        video_path   : 视频路径
-        audio_path   : 新音频路径（mp3/wav/aac 等）
-        output_path  : 输出 MP4 路径
-        loop_audio   : 音频时长不足时是否循环，默认 True
-        audio_volume : 音量倍数，1.0 为原始音量，默认 1.0
+        video_path     : 视频路径
+        audio_path     : 新音频路径（mp3/wav/aac 等）
+        output_path    : 输出 MP4 路径
+        loop_audio     : 音频时长不足时是否循环，默认 True
+        audio_volume   : 音量倍数，1.0 为原始音量，默认 1.0
+        trim_to_audio  : True 时以音频为时长基准，视频裁剪或延长
+        ffmpeg_params  : FFmpeg 额外参数
 
     返回：
         输出文件路径
-
-    调用示例：
-        from synthesis import replace_audio
-        replace_audio(
-            video_path=r"C:\videos\video.mp4",
-            audio_path=r"C:\audios\new.mp3",
-            output_path=r"C:\output\result.mp4",
-        )
     """
     return _replace_audio(
         video_path=video_path,
@@ -170,6 +170,8 @@ def replace_audio(
         output_path=output_path,
         loop_audio=loop_audio,
         audio_volume=audio_volume,
+        trim_to_audio=trim_to_audio,
+        ffmpeg_params=ffmpeg_params,
     )
 
 
@@ -224,6 +226,7 @@ def replace_head(
     smooth_window: int = 5,
     white_thresh: int = 240,
     keep_audio: bool = True,
+    ffmpeg_params: Optional[list] = None,
 ) -> str:
     """
     用卡通头部视频替换原视频中的人脸区域。
@@ -258,6 +261,7 @@ def replace_head(
         smooth_window=smooth_window,
         white_thresh=white_thresh,
         keep_audio=keep_audio,
+        ffmpeg_params=ffmpeg_params,
     )
 
 

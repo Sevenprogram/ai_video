@@ -667,11 +667,13 @@ def _run_pipeline(
             emit("pipeline", f"数字人文件夹: {digital_human_folder}（{len(clip_paths)} 个片段）")
     if not clip_paths:
         clip_paths = _build_clip_list(shots)
+        if clip_paths:
+            emit("pipeline", f"动作片段: {len(clip_paths)} 个（按分镜构建）")
     if not clip_paths:
         emit("pipeline", "未找到任何 action_clips，跳过视频合成。")
         return None
 
-    emit("pipeline", f"动作片段 {len(clip_paths)} 个 | 猪头: {os.path.basename(pig_path)}")
+    emit("pipeline", f"卡通头: {os.path.basename(pig_path)}")
 
     # 目标时长（取分镜最大 end_sec）
     target_duration = max((s.get("end_sec", 0) for s in shots), default=60.0)
@@ -679,7 +681,11 @@ def _run_pipeline(
     output_path = os.path.join(run_dir, "final.mp4")
     work_dir    = os.path.join(run_dir, "video_work")
 
-    emit("pipeline", f"开始合成，目标时长: {target_duration:.0f}s → {os.path.basename(output_path)}")
+    emit("pipeline", f"目标时长: {target_duration:.0f}s → {os.path.basename(output_path)}")
+    emit("pipeline", "Step 1/4: 拼接数字人切片并裁剪")
+    emit("pipeline", "Step 2/4: 替换音频（TTS）")
+    emit("pipeline", "Step 3/4: 卡通头覆盖")
+    emit("pipeline", "Step 4/4: 画中画叠加到录屏右下角")
 
     try:
         from pipeline import build_video
@@ -788,10 +794,13 @@ def run_recording_full_pipeline(
     if not os.path.exists(pig_path):
         raise RuntimeError(f"未找到卡通头部: {pig_path}")
 
-    emit("pipeline", f"数字人: {digital_human_folder}（{len(clip_paths)} 片段）| 卡通头: {os.path.basename(pig_path)}")
-
-    # Step 4：调用 pipeline.build_video（数字人合成 → 替换音频 → 卡通头覆盖 → 画中画）
-    emit("pipeline", "开始合成：数字人切片 → 卡通头覆盖 → 画中画（录屏右下角）→ 替换音频")
+    emit("pipeline", f"数字人: {digital_human_folder}（{len(clip_paths)} 个片段）")
+    emit("pipeline", f"卡通头: {os.path.basename(pig_path)}")
+    emit("pipeline", f"录屏: {os.path.basename(recording_path)}（{target_duration:.0f}s）")
+    emit("pipeline", "Step 1/4: 拼接数字人切片并裁剪至目标时长")
+    emit("pipeline", "Step 2/4: 替换音频（TTS 口播）")
+    emit("pipeline", "Step 3/4: 卡通头覆盖数字人头部")
+    emit("pipeline", "Step 4/4: 画中画叠加到录屏右下角")
     try:
         from pipeline import build_video
         result = build_video(
@@ -801,8 +810,10 @@ def run_recording_full_pipeline(
             main_path=recording_path,
             output_path=output_path,
             target_duration=target_duration,
+            audio_as_canonical=True,
             work_dir=work_dir,
             skip_existing=False,
+            ffmpeg_preset="ultrafast",
         )
         os.makedirs(VIDEO_OUTPUT_DIR, exist_ok=True)
         output_copy = os.path.join(VIDEO_OUTPUT_DIR, f"{folder_name}.mp4")

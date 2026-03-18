@@ -4,7 +4,7 @@
 import logging
 from typing import Literal, Optional, Tuple
 
-from moviepy import CompositeVideoClip, VideoFileClip
+from moviepy import CompositeVideoClip, ImageClip, VideoFileClip, concatenate_videoclips
 
 from .utils import check_video_path, ensure_output_dir
 
@@ -42,6 +42,8 @@ def overlay_video(
     main_audio: bool = True,
     sub_audio: bool = False,
     sub_crop: Optional[Tuple[int, int, int, int]] = None,
+    target_duration: Optional[float] = None,
+    ffmpeg_params: Optional[list] = None,
 ) -> str:
     """
     将子视频以画中画方式叠加到主视频上。
@@ -55,11 +57,12 @@ def overlay_video(
         opacity    : 小窗透明度 0.0~1.0，默认 1.0（不透明）
         margin     : 小窗距画面边缘的像素间距，默认 20px
         sub_start  : 小窗在主视频时间轴上的起始时间（秒），默认 0
-        sub_end    : 小窗消失时间（秒），None 表示持续到主视频结束
-        main_audio : 是否保留主视频音频，默认 True
-        sub_audio  : 是否叠加小窗视频音频，默认 False
-        sub_crop   : 裁剪子视频白边，格式 (x1, y1, x2, y2)，None 表示不裁剪
-                     例如 (616, 0, 1303, 1080) 可去掉左右白边只保留人物区域
+        sub_end          : 小窗消失时间（秒），None 表示持续到主视频结束
+        main_audio       : 是否保留主视频音频，默认 True
+        sub_audio        : 是否叠加小窗视频音频，默认 False
+        sub_crop         : 裁剪子视频白边，格式 (x1, y1, x2, y2)，None 表示不裁剪
+        target_duration  : 输出时长（秒），设定时主视频会裁剪/延长至该时长
+        ffmpeg_params    : FFmpeg 额外参数，如 ["-preset", "ultrafast"]
 
     返回：
         output_path
@@ -71,6 +74,23 @@ def overlay_video(
     logger.info("加载视频 — 主：%s，子：%s", main_path, sub_path)
     main_clip = VideoFileClip(main_path)
     sub_clip = VideoFileClip(sub_path)
+
+    # 以 target_duration 为输出时长时，主视频裁剪或延长
+    if target_duration is not None:
+        target = round(target_duration, 2)
+        md = main_clip.duration
+        eps = 0.02
+        if md > target + eps:
+            logger.info("主视频较长（%.2fs > %.2fs），裁剪至目标时长", md, target)
+            main_clip = main_clip.subclipped(0, target)
+        elif md < target - eps:
+            extend_sec = target - md
+            logger.info("主视频较短（%.2fs < %.2fs），最后一帧延长 %.2fs", md, target, extend_sec)
+            t_end = max(0, md - 0.05)
+            last_frame = main_clip.get_frame(t_end)
+            freeze_clip = ImageClip(last_frame, duration=extend_sec).with_fps(main_clip.fps)
+            main_clip = concatenate_videoclips([main_clip, freeze_clip], method="compose")
+            freeze_clip.close()
 
     # 裁剪子视频（去除白边），必须在缩放前做，避免影响比例计算
     if sub_crop is not None:
@@ -103,8 +123,11 @@ def overlay_video(
     pos_x, pos_y = pos_func(main_w, main_h, sub_w, sub_h, margin)
     logger.info("小窗位置：%s → 坐标 (%d, %d)，边距 %dpx", position, pos_x, pos_y, margin)
 
-    # 限制子视频的显示时段，不能超过主视频时长
-    actual_end = min(sub_end if sub_end is not None else main_clip.duration, main_clip.duration)
+    # 限制子视频的显示时段，不能超过主视频或子视频自身时长（避免越界报错）
+    main_dur = main_clip.duration
+    sub_dur = sub_clip.duration
+    actual_end = sub_end if sub_end is not None else min(main_dur, sub_dur)
+    actual_end = min(round(actual_end, 2), main_dur, sub_dur)
     logger.debug("子视频显示时段：%.2fs ~ %.2fs", sub_start, actual_end)
     sub_clip = sub_clip.with_start(sub_start).with_end(actual_end)
     sub_clip = sub_clip.with_position((pos_x, pos_y))
@@ -118,18 +141,18 @@ def overlay_video(
         sub_clip = sub_clip.without_audio()
 
     # 合成：主视频在底层，子视频叠加在上层
+    out_dur = target_duration if target_duration is not None else main_clip.duration
+    out_dur = round(out_dur, 2)
     logger.info("开始合成画中画...")
     final = CompositeVideoClip([main_clip, sub_clip], size=(main_w, main_h))
-    final = final.with_duration(main_clip.duration)
+    final = final.with_duration(out_dur)
+
+    write_kw = dict(codec="libx264", audio_codec="aac", fps=main_clip.fps, logger="bar")
+    if ffmpeg_params:
+        write_kw["ffmpeg_params"] = ffmpeg_params
 
     logger.info("导出至：%s", output_path)
-    final.write_videofile(
-        output_path,
-        codec="libx264",
-        audio_codec="aac",
-        fps=main_clip.fps,
-        logger="bar",
-    )
+    final.write_videofile(output_path, **write_kw)
 
     # 释放资源
     final.close()

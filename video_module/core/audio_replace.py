@@ -17,16 +17,20 @@ def replace_audio(
     output_path: str,
     loop_audio: bool = True,
     audio_volume: float = 1.0,
+    trim_to_audio: bool = False,
+    ffmpeg_params: Optional[list] = None,
 ) -> str:
     """
     完全替换视频音轨（原始音频会被丢弃）。
 
     参数：
-        video_path   : 原始视频路径
-        audio_path   : 新音频路径（mp3/wav/aac 等）
-        output_path  : 输出 MP4 路径
-        loop_audio   : 音频时长 < 视频时长时是否循环填充，默认 True
-        audio_volume : 新音频音量倍数，1.0 为原始音量，默认 1.0
+        video_path     : 原始视频路径
+        audio_path     : 新音频路径（mp3/wav/aac 等）
+        output_path    : 输出 MP4 路径
+        loop_audio     : 音频时长 < 视频时长时是否循环填充，默认 True（trim_to_audio 时忽略）
+        audio_volume   : 新音频音量倍数，1.0 为原始音量，默认 1.0
+        trim_to_audio  : True 时以音频为基准：视频过长则裁剪、过短则用最后一帧延长
+        ffmpeg_params  : FFmpeg 额外参数，如 ["-preset", "ultrafast"]
 
     返回：
         output_path
@@ -44,19 +48,34 @@ def replace_audio(
     audio_duration = audio_clip.duration
     logger.info("视频时长：%.2fs，音频时长：%.2fs", video_duration, audio_duration)
 
-    # 处理音频与视频时长不一致的情况
-    if audio_duration < video_duration:
-        if loop_audio:
-            # 循环音频直到填满视频时长
-            logger.info("音频较短（%.2fs < %.2fs），循环填充", audio_duration, video_duration)
-            audio_clip = afx.AudioLoop(duration=video_duration).apply(audio_clip)
-        else:
-            # 不循环时，不足部分由 moviepy 自动静音处理
-            logger.warning("音频较短（%.2fs < %.2fs），不足部分将静音", audio_duration, video_duration)
-    elif audio_duration > video_duration:
-        # 裁剪多余的音频部分
-        logger.info("音频较长（%.2fs > %.2fs），截断至视频时长", audio_duration, video_duration)
-        audio_clip = audio_clip.subclipped(0, video_duration)
+    if trim_to_audio:
+        # 以音频为时长基准：视频裁剪或延长至音频长度
+        target = round(audio_duration, 2)
+        eps = 0.02
+        if video_duration > target + eps:
+            logger.info("视频较长（%.2fs > %.2fs），裁剪至音频时长", video_duration, target)
+            video_clip = video_clip.subclipped(0, target)
+        elif video_duration < target - eps:
+            from moviepy import ImageClip, concatenate_videoclips
+            extend_sec = target - video_duration
+            logger.info("视频较短（%.2fs < %.2fs），最后一帧延长 %.2fs", video_duration, target, extend_sec)
+            t_end = max(0, video_duration - 0.05)
+            last_frame = video_clip.get_frame(t_end)
+            freeze_clip = ImageClip(last_frame, duration=extend_sec).with_fps(video_clip.fps)
+            video_clip = concatenate_videoclips([video_clip, freeze_clip], method="compose")
+            freeze_clip.close()
+        audio_clip = audio_clip.subclipped(0, target)
+    else:
+        # 原有逻辑：音频适配视频
+        if audio_duration < video_duration:
+            if loop_audio:
+                logger.info("音频较短（%.2fs < %.2fs），循环填充", audio_duration, video_duration)
+                audio_clip = afx.AudioLoop(duration=video_duration).apply(audio_clip)
+            else:
+                logger.warning("音频较短（%.2fs < %.2fs），不足部分将静音", audio_duration, video_duration)
+        elif audio_duration > video_duration:
+            logger.info("音频较长（%.2fs > %.2fs），截断至视频时长", audio_duration, video_duration)
+            audio_clip = audio_clip.subclipped(0, video_duration)
 
     # 按需调整音量
     if abs(audio_volume - 1.0) > 0.001:
@@ -66,14 +85,12 @@ def replace_audio(
     # 将新音频绑定到视频（替换原音轨）
     final = video_clip.with_audio(audio_clip)
 
+    write_kw = dict(codec="libx264", audio_codec="aac", fps=video_clip.fps, logger="bar")
+    if ffmpeg_params:
+        write_kw["ffmpeg_params"] = ffmpeg_params
+
     logger.info("导出至：%s", output_path)
-    final.write_videofile(
-        output_path,
-        codec="libx264",
-        audio_codec="aac",
-        fps=video_clip.fps,
-        logger="bar",
-    )
+    final.write_videofile(output_path, **write_kw)
 
     # 释放资源
     final.close()

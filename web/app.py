@@ -548,6 +548,7 @@ def get_recording_job(job_id: str):
         if job_id not in recording_jobs:
             raise HTTPException(404, "job not found")
         data = recording_jobs[job_id]
+    pa = data.get("pipeline_artifacts") or {}
     return {
         "id": job_id,
         "status": data.get("status", "pending"),
@@ -559,6 +560,8 @@ def get_recording_job(job_id: str):
         "resolved_local_videos": data.get("resolved_local_videos"),
         "pipeline_status": data.get("pipeline_status"),
         "final_video": data.get("final_video"),
+        "pipeline_artifacts": pa,
+        "pipeline_folder": pa.get("folder"),
         "logs": [
             {"ts": e.get("ts"), "text": e.get("text", ""), "step": "info"}
             for e in data.get("logs", [])

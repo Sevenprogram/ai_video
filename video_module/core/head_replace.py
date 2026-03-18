@@ -13,7 +13,7 @@ import logging
 import os
 import tempfile
 from collections import deque
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 
 import cv2
 import numpy as np
@@ -124,6 +124,7 @@ def replace_head(
     smooth_window: int = 5,
     white_thresh: int = 240,
     keep_audio: bool = True,
+    ffmpeg_params: Optional[List[str]] = None,
 ) -> str:
     """
     用卡通头部视频替换原视频中的人脸区域。
@@ -255,12 +256,10 @@ def replace_head(
             logger.warning("原视频无音频，跳过音频附加")
             final = processed
 
-        final.write_videofile(
-            output_path,
-            codec="libx264",
-            audio_codec="aac",
-            logger="bar",
-        )
+        write_kw = dict(codec="libx264", audio_codec="aac", logger="bar")
+        if ffmpeg_params:
+            write_kw["ffmpeg_params"] = ffmpeg_params
+        final.write_videofile(output_path, **write_kw)
         final.close()
         processed.close()
         original.close()

@@ -1,0 +1,55 @@
+Alright, let's get started. ... [pause] The first thing we need to do is navigate to the main dashboard. ... [pause] You can see it here on the left-hand side. ... [pause] Click on that. ... [pause] Now, we're on the dashboard. ... [pause]
+
+The next step is to locate the "New Project" button. ... [pause] It's usually in the upper right corner of the screen. ... [pause] Let me point that out for you. ... [pause] There it is. ... [pause]
+
+Go ahead and click that button. ... [pause]
+
+[silent] [silent] [silent]
+
+A new window or section will appear, prompting you to enter project details. ... [pause] We'll start by giving our project a name. ... [pause] Let's call this one "Project Alpha." ... [pause]
+
+Now, you'll need to select a project category from the dropdown menu. ... [pause] For this example, we'll choose "Marketing." ... [pause]
+
+[smacks lips] You can also add a brief description here if you wish. ... [pause] This is optional, but it can be helpful for future reference. ... [pause] Let's add a short description: "Initial setup for Q3 marketing campaign." ... [pause]
+
+Once you've filled in these details, look for the "Create Project" or "Save" button. ... [pause] It's usually at the bottom of this form. ... [pause]
+
+[clears throat] Go ahead and click that. ... [pause]
+
+[silent] [silent] [silent]
+
+Excellent. ... [pause] You should now see your newly created project listed on the dashboard. ... [pause] Let's find it. ... [pause] There it is! ... [pause] "Project Alpha." ... [pause]
+
+The next task is to add team members to this project. ... [pause] To do that, we need to access the project settings. ... [pause] Click on the project name itself. ... [pause]
+
+[chuckles] Sometimes it's that simple. ... [pause] Now we're in the project details view. ... [pause] Look for the "Team" or "Members" tab. ... [pause]
+
+[clears throat] We'll click on the "Add Member" button. ... [pause]
+
+[silent] [silent] [silent]
+
+You'll be prompted to enter the email address of the team member you want to add. ... [pause] Let's add "jane.doe@example.com." ... [pause]
+
+After entering the email, you can assign a role. ... [pause] We'll assign Jane the role of "Editor" for now. ... [pause]
+
+Finally, click the "Invite" or "Add" button to send the invitation. ... [pause]
+
+[silent] [silent] [silent]
+
+And that's it for this section. ... [pause] We've successfully created a new project and invited a team member. ... [pause]
+
+Now, let's move on to configuring the project settings. ... [pause] We'll need to adjust some of the default options to suit our needs. ... [pause] Click on the "Settings" icon, usually a gear symbol, within the project view. ... [pause]
+
+[clears throat] We'll start by looking at the notification preferences. ... [pause] You can toggle these on or off depending on what you want to be alerted about. ... [pause]
+
+[smacks lips] Let's disable email notifications for now to keep things clean. ... [pause]
+
+Next, we'll look at the integration options. ... [pause] This is where you can connect with other tools you might be using. ... [pause] For this demo, we won't be setting up any integrations. ... [pause]
+
+[clears throat] Finally, we'll review the billing information. ... [pause] This is important for subscription management. ... [pause] You can update your payment details here. ... [pause]
+
+Once you're satisfied with the settings, be sure to click "Save Changes." ... [pause]
+
+[silent] [silent] [silent]
+
+And we're done! ... [pause] You've now seen how to create a project, add team members, and configure basic settings. ... [pause] That concludes this demonstration. ... [pause]

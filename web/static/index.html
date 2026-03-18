@@ -383,24 +383,32 @@ function subscribeSSE(jobId) {
   evtSource.onmessage = (e) => {
     const d = JSON.parse(e.data);
     appendLog({ step: d.step || 'info', msg: d.msg || d.text });
-    if (d.step === 'storyboard') {
-      setStepState('storyboard', 'running');
+    if (d.step === 'script' || d.step === 'storyboard') {
+      setStepState('script', d.step === 'script' ? 'running' : 'done');
+      setStepState('storyboard', d.step === 'storyboard' ? 'running' : 'done');
       const el = document.getElementById('step-storyboard-desc');
-      if (el) el.textContent = (d.msg || '').slice(0, 35);
+      if (el && d.step === 'storyboard') el.textContent = (d.msg || '').slice(0, 35);
+      fetch('/api/jobs/' + jobId).then(r => r.ok ? r.json() : null).then(j => { if (j && j.artifacts) renderArtifacts(j); });
     }
     if (d.step === 'openclaw') {
       setStepState('openclaw', 'running');
       document.getElementById('openclawActionsRow').classList.remove('hidden');
+      fetch('/api/jobs/' + jobId).then(r => r.ok ? r.json() : null).then(j => { if (j && j.artifacts) renderArtifacts(j); });
     }
     if (d.step === 'pipeline') {
       setStepState('pipeline', d.msg && d.msg.includes('失败') ? 'pending' : 'running');
+      fetch('/api/jobs/' + jobId).then(r => r.ok ? r.json() : null).then(j => { if (j && j.artifacts) renderArtifacts(j); });
     }
-    if (/视频合成完成/.test(d.msg || '')) setStepState('pipeline', 'done');
+    if (/视频合成完成/.test(d.msg || '')) { setStepState('pipeline', 'done'); fetch('/api/jobs/' + jobId).then(r => r.ok ? r.json() : null).then(j => { if (j) renderArtifacts(j); }); }
     if (/跳过视频合成|未在 video_shoot/.test(d.msg || '')) setStepState('pipeline', 'pending');
+    if (/文稿已保存|音频已保存|分镜解析成功|输出目录已创建/.test(d.msg || '')) {
+      fetch('/api/jobs/' + jobId).then(r => r.ok ? r.json() : null).then(j => { if (j && j.artifacts) renderArtifacts(j); });
+    }
     if (/完成|OpenClaw 回复/.test(d.msg || '') || d.step === 'done') {
       setStepState('openclaw', 'done');
       setStepState('storyboard', 'done');
       setStepState('script', 'done');
+      fetch('/api/jobs/' + jobId).then(r => r.ok ? r.json() : null).then(j => { if (j) renderArtifacts(j); });
     }
     if (d.step === 'error') {
       evtSource.close();
@@ -460,7 +468,7 @@ function renderArtifacts(job) {
   if (a.audio) {
     const block = document.createElement('div');
     block.className = 'result-block';
-    block.innerHTML = '<div class="result-label">🔊 音频</div><a class="download-link" href="/api/files/' + folder + '/audio.mp3" download>下载 audio.mp3</a>';
+    block.innerHTML = '<div class="result-label">🔊 音频</div><audio controls style="width:100%;max-height:60px"><source src="/api/files/' + folder + '/audio.mp3" type="audio/mpeg"></audio><a class="download-link" href="/api/files/' + folder + '/audio.mp3" download>下载 audio.mp3</a>';
     body.appendChild(block);
   }
   if (a.storyboard && a.shots) {
@@ -485,7 +493,7 @@ function renderArtifacts(job) {
   if (a.final_video) {
     const block = document.createElement('div');
     block.className = 'result-block';
-    block.innerHTML = '<div class="result-label">🎞 最终视频</div><a class="download-link" href="/api/files/' + folder + '/final.mp4" download>下载 final.mp4</a>';
+    block.innerHTML = '<div class="result-label">🎞 最终视频</div><video controls style="width:100%;max-height:200px;border-radius:6px"><source src="/api/files/' + folder + '/final.mp4" type="video/mp4"></video><a class="download-link" href="/api/files/' + folder + '/final.mp4" download>下载 final.mp4</a>';
     body.appendChild(block);
   }
 }
